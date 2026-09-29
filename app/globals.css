@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Cold dark. Only theme. No light mode. */
+    --background: 220 20% 4%;
+    --foreground: 210 16% 92%;
+
+    --card: 220 18% 7%;
+    --card-foreground: 210 16% 92%;
+
+    --popover: 220 18% 7%;
+    --popover-foreground: 210 16% 92%;
+
+    --primary: 199 89% 55%;
+    --primary-foreground: 220 30% 6%;
+
+    --secondary: 220 14% 13%;
+    --secondary-foreground: 210 16% 88%;
+
+    --muted: 220 14% 12%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 220 14% 15%;
+    --accent-foreground: 210 16% 92%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 210 16% 96%;
+
+    --border: 220 14% 16%;
+    --input: 220 14% 16%;
+    --ring: 199 89% 55%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Mobile-first: keep tap targets honest, kill iOS input zoom. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  .label-xs {
+    @apply text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground;
+  }
+}
