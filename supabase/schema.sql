@@ -99,8 +99,48 @@ create table if not exists daily_logs (
   completed     boolean default false,
   value         numeric,
   completed_at  timestamptz,
-  unique (user_task_id, log_date)
+  -- Verified against the live database: the unique key includes user_id.
+  unique (user_id, user_task_id, log_date)
 );
+
+-- §4: daily logs are accepted only for yesterday, today and tomorrow.
+--
+-- NOT PRESENT IN THE LIVE DATABASE YET. Verified by inserting a log 30 days in
+-- the past through PostgREST, which succeeded. Until this trigger is applied,
+-- the rule is enforced only in app/(app)/today/actions.ts, which means anything
+-- talking to the database directly can still backfill.
+--
+-- It has to be a trigger rather than a CHECK constraint, because current_date
+-- is not IMMUTABLE and CHECK constraints may not call it.
+--
+-- The window is evaluated in the owning user's timezone, so a user in
+-- Asia/Kolkata gets their own midnight, not the server's.
+create or replace function enforce_log_date_window()
+returns trigger language plpgsql as $window$
+declare
+  user_today date;
+begin
+  select (now() at time zone coalesce(p.timezone, 'Asia/Kolkata'))::date
+    into user_today
+    from profiles p
+   where p.id = new.user_id;
+
+  if user_today is null then
+    user_today := (now() at time zone 'Asia/Kolkata')::date;
+  end if;
+
+  if new.log_date < user_today - 1 or new.log_date > user_today + 1 then
+    raise exception 'log_date % is outside the writable window (% to %)',
+      new.log_date, user_today - 1, user_today + 1
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end $window$;
+
+drop trigger if exists daily_logs_date_window on daily_logs;
+create trigger daily_logs_date_window before insert or update of log_date on daily_logs
+  for each row execute function enforce_log_date_window();
 
 -- ---------------------------------------------------------------------------
 -- training

@@ -1,93 +1,76 @@
 import type { Metadata } from 'next';
-import { differenceInCalendarDays, parseISO } from 'date-fns';
+import Link from 'next/link';
 import { requireUser } from '@/lib/profile';
+import { loadToday } from '@/lib/tasks/ensure';
+import { loadDisciplineStats } from '@/lib/tasks/stats';
+import { challengeDay, phaseForDay } from '@/lib/calc/day';
+import { DayHeader } from '@/components/today/day-header';
+import { FullDayCelebration } from '@/components/today/full-day';
+import { TaskList, type TaskItem } from '@/components/today/task-list';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CHALLENGE_DAYS } from '@/lib/calc/projection';
+import { buttonVariants } from '@/components/ui/button';
 
 export const metadata: Metadata = { title: 'Today' };
 
+// Always render fresh: "today" depends on the wall clock, not on a cache.
+export const dynamic = 'force-dynamic';
+
 export default async function TodayPage() {
-  const { profile, email } = await requireUser();
+  const { profile } = await requireUser();
+  if (!profile) return null;
 
-  const day = profile?.challenge_start
-    ? Math.min(
-        CHALLENGE_DAYS,
-        Math.max(0, differenceInCalendarDays(new Date(), parseISO(profile.challenge_start)) + 1),
-      )
-    : 0;
+  const { logDate, tasks, logs } = await loadToday(profile);
+  const stats = await loadDisciplineStats(profile.id, logDate);
+
+  const logByTask = new Map(logs.map((log) => [log.user_task_id, log]));
+
+  const items: TaskItem[] = tasks
+    .filter((task) => task.active)
+    .map((task) => {
+      const log = logByTask.get(task.id);
+      return {
+        id: task.id,
+        title: task.title,
+        category: task.category,
+        target: Number(task.target ?? 0),
+        unit: task.unit ?? 'check',
+        completed: Boolean(log?.completed),
+        value: Number(log?.value ?? 0),
+      };
+    });
+
+  const day = challengeDay(profile.challenge_start, profile.timezone ?? '');
+  const phase = phaseForDay(day);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <p className="label-xs">
-          Day {day} / {CHALLENGE_DAYS}
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {profile?.display_name ?? profile?.username ?? email ?? 'Athlete'}
-        </h1>
-      </div>
+    <div className="space-y-8">
+      <DayHeader
+        day={day}
+        phase={phase}
+        streak={stats.streak.current}
+        progress={stats.today}
+        points={stats.points.total}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily targets</CardTitle>
-          <CardDescription>
-            Locked in at setup. Re-calculated by the weekly check-in later on.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-4 gap-4 text-center">
-            <Target label="Calories" value={profile?.calorie_target} unit="kcal" />
-            <Target label="Protein" value={profile?.protein_target_g} unit="g" />
-            <Target label="Carbs" value={profile?.carbs_target_g} unit="g" />
-            <Target label="Fat" value={profile?.fat_target_g} unit="g" />
-          </dl>
-        </CardContent>
-      </Card>
+      {items.length > 0 ? (
+        <TaskList tasks={items} logDate={logDate} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>No active tasks</CardTitle>
+            <CardDescription>
+              Every task is switched off. Turn some back on to start logging.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/tasks" className={buttonVariants({ variant: 'outline' })}>
+              Manage tasks
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Checklist coming</CardTitle>
-          <CardDescription>
-            The daily tasks, streak and points land in Phase 3. Your plan is already saved.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="label-xs">Goal</dt>
-              <dd className="font-mono">{profile?.goal ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="label-xs">Training</dt>
-              <dd className="font-mono">
-                {profile?.training_mode ?? '—'} · {profile?.days_per_week ?? '—'}x
-              </dd>
-            </div>
-            <div>
-              <dt className="label-xs">Water</dt>
-              <dd className="font-mono">
-                {profile?.water_target_ml ? `${(profile.water_target_ml / 1000).toFixed(1)} L` : '—'}
-              </dd>
-            </div>
-            <div>
-              <dt className="label-xs">Modules</dt>
-              <dd className="font-mono">
-                {profile?.modules?.length ? profile.modules.join(', ') : 'none'}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function Target({ label, value, unit }: { label: string; value?: number | null; unit: string }) {
-  return (
-    <div>
-      <dt className="label-xs">{label}</dt>
-      <dd className="font-mono text-xl">{value ?? '—'}</dd>
-      <dd className="text-[0.65rem] text-muted-foreground">{unit}</dd>
+      <FullDayCelebration full={stats.today.full} logDate={logDate} />
     </div>
   );
 }

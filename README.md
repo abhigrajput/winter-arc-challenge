@@ -80,7 +80,29 @@ for it.
 Deep-linking past an unfinished step redirects back; an onboarded user is bounced out of setup
 entirely.
 
+## Checklist, streaks and points
+
+`/today` seeds `user_tasks` from `task_templates` on first visit (tasks whose module the
+user did not pick are inserted inactive, per §9) and creates that day's `daily_logs` rows
+lazily. Both are idempotent.
+
+Streak and points are **derived, never stored** — the live schema has no columns for them, and
+deriving keeps them from drifting out of sync with the logs.
+
+- A day counts toward the streak at >= 80% of that day's active tasks. The denominator is the
+  number of log rows that exist for that date, so deactivating a task later never rewrites an
+  earned day.
+- Today falling short does not break the run — there is still time left in the day.
+- Points: 10/task, +20 full day, +15 workout logged, +25 check-in.
+
+### The date window
+
+§4 allows writes for yesterday, today and tomorrow only, measured in the user's own timezone.
+**The live database does not enforce this** — a log 30 days in the past inserts fine through
+PostgREST. Today the rule lives only in `app/(app)/today/actions.ts`. `supabase/schema.sql`
+carries the trigger that would close the gap; it needs to be applied by hand.
+
 ## Phases
 
-Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth) and 2 (onboarding +
-calc engine) are done.
+Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
+engine) and 3 (today checklist + streaks + points) are done.
