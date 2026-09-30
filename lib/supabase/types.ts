@@ -29,13 +29,13 @@ export type TaskCategory = 'discipline' | 'body' | 'face' | 'mind' | 'spirit' | 
 export type TaskModule = 'core' | ModuleSlug;
 export type TaskUnit = 'check' | 'min' | 'rounds' | 'steps' | 'km' | 'L';
 
-export interface AchievementRow {
+export type AchievementRow = {
   user_id: string;
   code: string;
   earned_at: string | null;
-}
+};
 
-export interface AiPlanRow {
+export type AiPlanRow = {
   id: string;
   user_id: string;
   plan_type: string;
@@ -43,16 +43,16 @@ export interface AiPlanRow {
   content: Json;
   is_active: boolean | null;
   created_at: string | null;
-}
+};
 
-export interface AiUsageRow {
+export type AiUsageRow = {
   id: number;
   user_id: string;
   route: string;
   created_at: string | null;
-}
+};
 
-export interface BodyMeasurementRow {
+export type BodyMeasurementRow = {
   user_id: string;
   log_date: string;
   weight_kg: number | null;
@@ -63,9 +63,9 @@ export interface BodyMeasurementRow {
   neck_cm: number | null;
   hip_cm: number | null;
   body_fat_pct: number | null;
-}
+};
 
-export interface CheckinRow {
+export type CheckinRow = {
   id: string;
   user_id: string;
   week: number;
@@ -77,18 +77,18 @@ export interface CheckinRow {
   ai_feedback: Json | null;
   calorie_adjustment: number | null;
   created_at: string | null;
-}
+};
 
-export interface ContentPostRow {
+export type ContentPostRow = {
   id: string;
   user_id: string;
   log_date: string;
   platform: string | null;
   url: string | null;
   title: string | null;
-}
+};
 
-export interface DailyLogRow {
+export type DailyLogRow = {
   id: string;
   user_id: string;
   user_task_id: string;
@@ -96,9 +96,9 @@ export interface DailyLogRow {
   completed: boolean | null;
   value: number | null;
   completed_at: string | null;
-}
+};
 
-export interface ExerciseRow {
+export type ExerciseRow = {
   id: number;
   slug: string;
   name: string;
@@ -110,9 +110,9 @@ export interface ExerciseRow {
   mistakes: string[] | null;
   progression_of: number | null;
   video_url: string | null;
-}
+};
 
-export interface FoodEntryRow {
+export type FoodEntryRow = {
   id: string;
   user_id: string;
   log_date: string;
@@ -124,16 +124,16 @@ export interface FoodEntryRow {
   fat_g: number | null;
   source: string | null;
   created_at: string | null;
-}
+};
 
-export interface GitaProgressRow {
+export type GitaProgressRow = {
   user_id: string;
   chapter: number;
   verse: number | null;
   completed_at: string | null;
-}
+};
 
-export interface ProfileRow {
+export type ProfileRow = {
   id: string;
   username: string | null;
   display_name: string | null;
@@ -167,27 +167,27 @@ export interface ProfileRow {
   is_public: boolean | null;
   onboarded: boolean | null;
   created_at: string | null;
-}
+};
 
-export interface ProgressPhotoRow {
+export type ProgressPhotoRow = {
   id: string;
   user_id: string;
   log_date: string;
   angle: string;
   storage_path: string;
   created_at: string | null;
-}
+};
 
-export interface PushSubscriptionRow {
+export type PushSubscriptionRow = {
   id: string;
   user_id: string;
   endpoint: string;
   p256dh: string;
   auth: string;
   reminders: Json | null;
-}
+};
 
-export interface SkinLogRow {
+export type SkinLogRow = {
   user_id: string;
   log_date: string;
   am_done: boolean | null;
@@ -195,18 +195,18 @@ export interface SkinLogRow {
   breakouts: number | null;
   dairy: boolean | null;
   notes: string | null;
-}
+};
 
-export interface SleepLogRow {
+export type SleepLogRow = {
   user_id: string;
   log_date: string;
   bed_time: string | null;
   wake_time: string | null;
   hours: number | null;
   quality: number | null;
-}
+};
 
-export interface TaskTemplateRow {
+export type TaskTemplateRow = {
   id: number;
   slug: string;
   title: string;
@@ -215,9 +215,9 @@ export interface TaskTemplateRow {
   default_target: number;
   unit: TaskUnit;
   sort_order: number;
-}
+};
 
-export interface UserTaskRow {
+export type UserTaskRow = {
   id: string;
   user_id: string;
   template_id: number | null;
@@ -229,15 +229,15 @@ export interface UserTaskRow {
   active: boolean | null;
   sort_order: number | null;
   created_at: string | null;
-}
+};
 
-export interface WaterLogRow {
+export type WaterLogRow = {
   user_id: string;
   log_date: string;
   ml: number;
-}
+};
 
-export interface WorkoutSessionRow {
+export type WorkoutSessionRow = {
   id: string;
   user_id: string;
   session_date: string;
@@ -248,9 +248,9 @@ export interface WorkoutSessionRow {
   session_rpe: number | null;
   soreness: number | null;
   notes: string | null;
-}
+};
 
-export interface WorkoutSetRow {
+export type WorkoutSetRow = {
   id: string;
   session_id: string;
   user_id: string;
@@ -262,9 +262,14 @@ export interface WorkoutSetRow {
   rpe: number | null;
   is_pr: boolean | null;
   created_at: string | null;
-}
+};
 
-export interface Database {
+/** Convenience aliases for the tables the app writes most. */
+export type ProfileUpdate = Partial<ProfileRow>;
+export type BodyMeasurementUpsert = Partial<BodyMeasurementRow> &
+  Pick<BodyMeasurementRow, 'user_id' | 'log_date'>;
+
+export type Database = {
   public: {
     Tables: {
       achievements: {
@@ -393,4 +398,4 @@ export interface Database {
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
   };
-}
+};

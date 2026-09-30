@@ -2,13 +2,15 @@ import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 import { AppNav } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
+import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/profile';
 import { signOut } from '@/app/(auth)/login/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, email } = await requireUser();
 
-  // Phase 2 adds /onboarding and redirects here when onboarding_complete is false.
+  // Nothing in here works without a finished profile, so send them to setup.
+  if (!profile?.onboarded) redirect('/onboarding');
 
   return (
     <div className="flex min-h-dvh flex-col">
