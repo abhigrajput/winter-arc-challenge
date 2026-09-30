@@ -25,8 +25,15 @@ export async function loadDisciplineStats(
 
   const logsQuery = supabase
     .from('daily_logs')
-    .select('log_date, completed')
+    .select('log_date, completed, user_task_id')
     .eq('user_id', userId);
+  // Which tasks are active right now. Used to keep tasks the user has just
+  // switched off out of today's denominator.
+  const activeTasksQuery = supabase
+    .from('user_tasks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('active', true);
   const workoutsQuery = supabase
     .from('workout_sessions')
     .select('id')
@@ -34,13 +41,23 @@ export async function loadDisciplineStats(
     .not('completed_at', 'is', null);
   const checkinsQuery = supabase.from('checkins').select('id').eq('user_id', userId);
 
-  const [logsResult, workoutsResult, checkinsResult] = await Promise.all([
+  const [logsResult, activeTasksResult, workoutsResult, checkinsResult] = await Promise.all([
     logsQuery,
+    activeTasksQuery,
     workoutsQuery,
     checkinsQuery,
   ]);
 
-  const days = summariseDays(logsResult.data ?? []);
+  const activeTaskIds = new Set((activeTasksResult.data ?? []).map((t) => t.id));
+
+  const days = summariseDays(
+    (logsResult.data ?? []).map((row) => ({
+      log_date: row.log_date,
+      completed: row.completed,
+      active: activeTaskIds.has(row.user_task_id),
+    })),
+    today,
+  );
   const todayRow = days.find((d) => d.date === today) ?? { date: today, completed: 0, active: 0 };
 
   return {

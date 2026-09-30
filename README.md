@@ -102,7 +102,30 @@ deriving keeps them from drifting out of sync with the logs.
 PostgREST. Today the rule lives only in `app/(app)/today/actions.ts`. `supabase/schema.sql`
 carries the trigger that would close the gap; it needs to be applied by hand.
 
+## Tasks, goals and modules
+
+`lib/goals.ts` holds the §9 goal presets: target overrides, modules a goal forces on, reworded
+titles and tasks a goal treats as optional. `/tasks` lets the user switch any task on or off,
+edit any target, toggle modules and add or delete custom tasks.
+
+### Two live-schema behaviours the app has to work around
+
+**The database seeds `user_tasks` by trigger at signup**, before onboarding has asked for a goal
+or any modules — so those rows carry raw template targets with every add-on module off. The app
+reconciles afterwards (`lib/tasks/preset.ts`), called at the end of onboarding and from the
+"Reset to goal defaults" button. Without that step the goal presets would never take effect.
+
+**There is no DELETE policy on `daily_logs`.** A delete issued as the owning user returns
+HTTP 204 and removes nothing. Switching a task off therefore leaves an orphan log row for the
+current day, which would otherwise make the day permanently unfinishable. `summariseDays`
+excludes inactive tasks from the current day's totals instead; past days keep every row, so a
+streak already earned is never rewritten. `user_tasks`, by contrast, does allow owner deletes,
+so custom tasks delete properly.
+
+Both are recorded in `supabase/schema.sql`.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
-engine) and 3 (today checklist + streaks + points) are done.
+engine), 3 (today checklist + streaks + points) and 4 (task management + goal presets + modules)
+are done.

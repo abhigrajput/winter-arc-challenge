@@ -76,18 +76,31 @@ function longestRun(qualifying: Set<string>): number {
 
 /** Calendar-date arithmetic. Never round-trip through UTC here: toISOString()
  *  shifts the date for any timezone ahead of UTC. */
+export interface LogRow {
+  log_date: string | null;
+  completed: boolean | null;
+  /** Whether the owning task is active right now. */
+  active?: boolean | null;
+}
+
 /**
- * Rolls raw daily_logs rows up per day. The denominator is the number of log
- * rows that exist for that date — the tasks that were active when the day was
- * opened — so deactivating a task later never rewrites an earned day.
+ * Rolls raw daily_logs rows up per day.
+ *
+ * Past days count every log row that exists for that date, so a task switched
+ * off later never rewrites a streak day already earned.
+ *
+ * Today and later skip rows whose task is currently inactive: those are tasks
+ * the user has just turned off, and leaving them in the denominator would make
+ * the day permanently unfinishable. (The rows cannot simply be deleted — the
+ * live database has no DELETE policy on daily_logs.)
  */
-export function summariseDays(
-  logs: { log_date: string | null; completed: boolean | null }[],
-): DaySummary[] {
+export function summariseDays(logs: LogRow[], today?: string): DaySummary[] {
   const byDate = new Map<string, DaySummary>();
 
   for (const log of logs) {
     if (!log.log_date) continue;
+    const isCurrentOrFuture = today !== undefined && log.log_date >= today;
+    if (isCurrentOrFuture && log.active === false) continue;
     const entry = byDate.get(log.log_date) ?? { date: log.log_date, completed: 0, active: 0 };
     entry.active += 1;
     if (log.completed) entry.completed += 1;

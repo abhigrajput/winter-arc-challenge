@@ -30,10 +30,17 @@ export interface OnboardingState extends ProgressInput {
   resume: Step;
 }
 
-function cookieStepIndex(value: string | undefined): number {
+/**
+ * The cookie is scoped to a user id. Without that, a second account signing in
+ * on the same browser would inherit the first account's progress and skip
+ * straight past onboarding.
+ */
+function cookieStepIndex(value: string | undefined, userId: string): number {
   if (!value) return -1;
-  const index = STEPS.indexOf(value as Step);
-  return index;
+  const separator = value.lastIndexOf(':');
+  if (separator < 0) return -1;
+  if (value.slice(0, separator) !== userId) return -1;
+  return STEPS.indexOf(value.slice(separator + 1) as Step);
 }
 
 export async function loadOnboardingState(userId: string): Promise<OnboardingState | null> {
@@ -56,7 +63,7 @@ export async function loadOnboardingState(userId: string): Promise<OnboardingSta
 
   if (!profile) return null;
 
-  const reached = cookieStepIndex(cookieStore.get(PROGRESS_COOKIE)?.value);
+  const reached = cookieStepIndex(cookieStore.get(PROGRESS_COOKIE)?.value, userId);
 
   const progress: ProgressInput = {
     profile,

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogOut } from 'lucide-react';
+import { ListChecks, LogOut } from 'lucide-react';
 import { AppNav } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
@@ -19,10 +19,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/today" className="label-xs hover:text-foreground">
             Winter Arc
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <span className="mr-2 font-mono text-xs text-muted-foreground">
               {profile?.username ?? email}
             </span>
+            <Button asChild variant="ghost" size="icon" aria-label="Manage tasks">
+              <Link href="/tasks">
+                <ListChecks />
+              </Link>
+            </Button>
             <form action={signOut}>
               <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
                 <LogOut />

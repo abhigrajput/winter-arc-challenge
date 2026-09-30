@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { ProfileUpdate } from '@/lib/supabase/types';
 import { buildPlan, planToProfileTargets } from '@/lib/calc/plan';
 import { navyBodyFat } from '@/lib/calc/bodyfat';
+import { ensureUserTasks } from '@/lib/tasks/ensure';
+import { applyGoalPresetToTasks } from '@/lib/tasks/preset';
 import { PROGRESS_COOKIE } from '@/lib/onboarding/state';
 import {
   baselineSchemaFor,
@@ -52,9 +54,9 @@ function flatten(error: z.ZodError): Record<string, string> {
 }
 
 /** Records the furthest step submitted, so default-valued steps are not re-asked. */
-async function markReached(step: Step): Promise<void> {
+async function markReached(step: Step, userId: string): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set(PROGRESS_COOKIE, step, {
+  cookieStore.set(PROGRESS_COOKIE, `${userId}:${step}`, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -77,7 +79,7 @@ async function saveAndAdvance(step: Step, patch: ProfileUpdate): Promise<StepSta
     return { error: 'Could not save. Try again.' };
   }
 
-  await markReached(step);
+  await markReached(step, userId);
   revalidatePath('/onboarding', 'layout');
   redirect(`/onboarding/${nextStep(step)}`);
 }
@@ -198,7 +200,7 @@ export async function saveBaseline(_prev: StepState, formData: FormData): Promis
 
   if (error) return { error: 'Could not save your measurements. Try again.' };
 
-  await markReached('baseline');
+  await markReached('baseline', userId);
   revalidatePath('/onboarding', 'layout');
   redirect('/onboarding/result');
 }
@@ -240,10 +242,20 @@ export async function finishOnboarding(): Promise<void> {
     goal: profile.goal,
   });
 
-  await supabase
+  const { data: finished } = await supabase
     .from('profiles')
     .update({ ...planToProfileTargets(plan), onboarded: true })
-    .eq('id', userId);
+    .eq('id', userId)
+    .select()
+    .maybeSingle();
+
+  // The database seeds user_tasks by trigger at signup, long before a goal or
+  // any modules are known, so reconcile them here where the profile is finally
+  // complete. ensureUserTasks covers the case where no rows exist at all.
+  if (finished) {
+    await ensureUserTasks(finished);
+    await applyGoalPresetToTasks(userId, finished.goal, finished.modules);
+  }
 
   const cookieStore = await cookies();
   cookieStore.delete(PROGRESS_COOKIE);

@@ -77,6 +77,15 @@ create table if not exists task_templates (
   sort_order      int not null
 );
 
+-- IMPORTANT, verified against the live database: a trigger on signup inserts all
+-- 24 task_templates into user_tasks immediately, before onboarding has asked for
+-- a goal or any add-on modules. Those rows therefore carry raw template targets
+-- with every module task switched off.
+--
+-- The exact trigger body could not be read back over the REST API. The app
+-- reconciles afterwards (lib/tasks/preset.ts, called from finishOnboarding and
+-- from /tasks), which is what makes the §9 goal presets actually take effect.
+-- If that trigger is ever removed, lib/tasks/ensure.ts seeds the rows instead.
 create table if not exists user_tasks (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references profiles (id) on delete cascade,
@@ -91,6 +100,12 @@ create table if not exists user_tasks (
   created_at  timestamptz default now()
 );
 
+-- VERIFIED GAP IN THE LIVE DATABASE: there is no DELETE policy on daily_logs.
+-- A delete issued as the owning user returns HTTP 204 but removes nothing, so
+-- switching a task off leaves an orphan row for the current day. The app works
+-- around it by excluding inactive tasks from the current day's totals
+-- (lib/calc/streak.ts). Adding the policy below would let the rows be removed
+-- properly. user_tasks, by contrast, does allow the owner to delete.
 create table if not exists daily_logs (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references profiles (id) on delete cascade,

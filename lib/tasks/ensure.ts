@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import type { DailyLogRow, ProfileRow, UserTaskRow } from '@/lib/supabase/types';
 import { localDate } from '@/lib/calc/day';
+import { resolveTask } from '@/lib/goals';
 
 /**
  * Idempotent setup for a user's checklist.
@@ -11,7 +12,14 @@ import { localDate } from '@/lib/calc/day';
  * they no-op once the rows exist.
  */
 
-/** §9: tasks whose module the user did not pick are inserted inactive, not skipped. */
+/**
+ * §9: tasks whose module the user did not pick are inserted inactive, not
+ * skipped, so switching a module on later just flips a flag. Targets and
+ * wording come from the goal preset (lib/goals.ts).
+ *
+ * Seeds once. Changing goal or modules afterwards is handled from /tasks, so
+ * this never overwrites a target the user has edited.
+ */
 export async function ensureUserTasks(profile: ProfileRow): Promise<UserTaskRow[]> {
   const supabase = await createClient();
 
@@ -32,19 +40,43 @@ export async function ensureUserTasks(profile: ProfileRow): Promise<UserTaskRow[
   if (templateError) throw new Error(`Could not load task templates: ${templateError.message}`);
   if (!templates || templates.length === 0) return [];
 
-  const chosen = new Set(profile.modules ?? []);
+  // Seeding happens once and sets targets that persist, so read the goal and
+  // modules straight from the database rather than trusting the object handed
+  // in — a caller holding a profile loaded moments earlier would bake in the
+  // wrong preset permanently.
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('goal, modules')
+    .eq('id', profile.id)
+    .maybeSingle();
 
-  const rows = templates.map((template) => ({
-    user_id: profile.id,
-    template_id: template.id,
-    title: template.title,
-    category: template.category,
-    target: template.default_target,
-    unit: template.unit,
-    is_custom: false,
-    active: template.module === 'core' || chosen.has(template.module as never),
-    sort_order: template.sort_order,
-  }));
+  const goal = current?.goal ?? profile.goal;
+  const modules = current?.modules ?? profile.modules;
+
+  const rows = templates.map((template) => {
+    const resolved = resolveTask(
+      {
+        slug: template.slug ?? '',
+        title: template.title ?? '',
+        module: template.module ?? 'core',
+        default_target: Number(template.default_target ?? 0),
+      },
+      goal,
+      modules,
+    );
+
+    return {
+      user_id: profile.id,
+      template_id: template.id,
+      title: resolved.title,
+      category: template.category,
+      target: resolved.target,
+      unit: template.unit,
+      is_custom: false,
+      active: resolved.active,
+      sort_order: template.sort_order,
+    };
+  });
 
   const { data: inserted, error: insertError } = await supabase
     .from('user_tasks')
