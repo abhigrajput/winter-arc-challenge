@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "seed:exercises": "tsx scripts/seed-exercises.mts"
+    "seed:exercises": "tsx scripts/seed-exercises.mts",
+    "verify:bodyfat": "tsx scripts/verify-body-fat-trigger.mts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

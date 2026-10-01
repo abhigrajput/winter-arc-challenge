@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireUser } from '@/lib/profile';
-import { loadStats, heatmapWeeks } from '@/lib/stats/load';
+import { loadStats } from '@/lib/stats/load';
+import { heatmapWeeks } from '@/lib/stats/heatmap';
 import { CHALLENGE_DAYS } from '@/lib/calc/day';
 import { BODY_FAT_ERROR_MARGIN } from '@/lib/calc/bodyfat';
 import { POINTS } from '@/lib/calc/points';

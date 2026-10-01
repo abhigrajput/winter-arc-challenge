@@ -13,6 +13,14 @@
 -- API, so the policies below are the intended definitions (owner-only on every
 -- table) rather than a verified dump of what is live. The live project is
 -- authoritative; treat any mismatch as a bug in this file.
+--
+-- STILL TO BE APPLIED: supabase/migrations/pre-phase-13.sql. It is the only
+-- outstanding difference between this file and the live project, and it covers
+-- the public_profiles view, the body_fat_pct trigger, the daily_logs DELETE
+-- policy, the §4 log_date window trigger and profiles.onboarding_step. Each of
+-- those is marked below. Nothing in the app depends on it having been run —
+-- every one of them has an app-side fallback — but the guarantees are weaker
+-- until it has.
 
 create extension if not exists "pgcrypto";
 
@@ -63,6 +71,11 @@ create table if not exists profiles (
   created_at        timestamptz default now()
 );
 
+-- Added by supabase/migrations/pre-phase-13.sql. Until then onboarding derives
+-- the step from which fields are filled in (lib/onboarding/progress.ts).
+alter table profiles
+  add column if not exists onboarding_step int;
+
 -- ---------------------------------------------------------------------------
 -- tasks + daily logs
 -- ---------------------------------------------------------------------------
@@ -104,8 +117,9 @@ create table if not exists user_tasks (
 -- A delete issued as the owning user returns HTTP 204 but removes nothing, so
 -- switching a task off leaves an orphan row for the current day. The app works
 -- around it by excluding inactive tasks from the current day's totals
--- (lib/calc/streak.ts). Adding the policy below would let the rows be removed
--- properly. user_tasks, by contrast, does allow the owner to delete.
+-- (lib/calc/streak.ts). user_tasks, by contrast, does allow the owner to
+-- delete. The policy is in supabase/migrations/pre-phase-13.sql (5a) and is
+-- restated further down with the other policies.
 create table if not exists daily_logs (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references profiles (id) on delete cascade,
@@ -123,7 +137,8 @@ create table if not exists daily_logs (
 -- NOT PRESENT IN THE LIVE DATABASE YET. Verified by inserting a log 30 days in
 -- the past through PostgREST, which succeeded. Until this trigger is applied,
 -- the rule is enforced only in app/(app)/today/actions.ts, which means anything
--- talking to the database directly can still backfill.
+-- talking to the database directly can still backfill. Shipped in
+-- supabase/migrations/pre-phase-13.sql (5b).
 --
 -- It has to be a trigger rather than a CHECK constraint, because current_date
 -- is not IMMUTABLE and CHECK constraints may not call it.
@@ -247,6 +262,60 @@ create table if not exists body_measurements (
   primary key (user_id, log_date)
 );
 
+-- §6 US Navy estimate, computed in the database so the number does not depend
+-- on which client wrote the row. Mirrors lib/calc/bodyfat.ts navyBodyFat()
+-- exactly — same constants, same 1-decimal rounding, same refusals (waist not
+-- bigger than neck, hip missing for a woman). sex and height_cm are read from
+-- profiles rather than taken from the request.
+--
+-- NOT PRESENT IN THE LIVE DATABASE YET: supabase/migrations/pre-phase-13.sql
+-- (3). Until applied, body_fat_pct is whatever the app computed and sent.
+-- `npm run verify:bodyfat` pushes lib/calc/bodyfat-fixtures.ts through the live
+-- trigger and fails on any disagreement.
+create or replace function compute_navy_body_fat()
+returns trigger language plpgsql as $bf$
+declare
+  p_sex    text;
+  p_height numeric;
+  girth    numeric;
+  estimate numeric;
+begin
+  select pr.sex, pr.height_cm into p_sex, p_height
+    from profiles pr
+   where pr.id = new.user_id;
+
+  if p_sex is null or p_height is null or p_height <= 0
+     or new.waist_cm is null or new.waist_cm <= 0
+     or new.neck_cm is null or new.neck_cm <= 0 then
+    return new;
+  end if;
+
+  if p_sex = 'male' then
+    girth := new.waist_cm - new.neck_cm;
+    if girth <= 0 then
+      return new;
+    end if;
+    estimate := 495 / (1.0324 - 0.19077 * log(10, girth) + 0.15456 * log(10, p_height)) - 450;
+  else
+    if new.hip_cm is null or new.hip_cm <= 0 then
+      return new;
+    end if;
+    girth := new.waist_cm + new.hip_cm - new.neck_cm;
+    if girth <= 0 then
+      return new;
+    end if;
+    estimate := 495 / (1.29579 - 0.35004 * log(10, girth) + 0.221 * log(10, p_height)) - 450;
+  end if;
+
+  new.body_fat_pct := round(estimate, 1);
+  return new;
+end $bf$;
+
+drop trigger if exists body_measurements_body_fat on body_measurements;
+create trigger body_measurements_body_fat
+  before insert or update of waist_cm, neck_cm, hip_cm on body_measurements
+  for each row execute function compute_navy_body_fat();
+
 -- Files live in the private `progress` bucket at {user_id}/{date}-{angle}.jpg
 create table if not exists progress_photos (
   id           uuid primary key default gen_random_uuid(),
@@ -365,15 +434,44 @@ drop policy if exists "exercises: read" on exercises;
 create policy "exercises: read" on exercises
   for select to authenticated using (true);
 
--- profiles: own row, plus public discipline data for /u/[username].
--- Body data, nutrition and photos live in other tables and are never public.
+-- profiles: own row only.
+--
+-- CORRECTION TO AN EARLIER VERSION OF THIS FILE: it declared a second policy,
+-- "profiles: read public", granting SELECT on any row where is_public and
+-- onboarded. That policy was never applied to the live project, and it should
+-- not be: profiles holds weight_kg, target_weight_kg, body targets and
+-- calorie_target, so a readable row leaks body data, which CLAUDE.md §8.12
+-- forbids. Verified live — a second authenticated user selecting all profiles
+-- gets back only their own row, and an anon request gets an empty array even
+-- when a public, onboarded profile exists.
+--
+-- /u/[username] reads public_profiles instead (below).
 drop policy if exists "profiles: all own" on profiles;
 create policy "profiles: all own" on profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
 drop policy if exists "profiles: read public" on profiles;
-create policy "profiles: read public" on profiles
-  for select using (is_public and onboarded);
+
+-- The public face of a profile: five columns, discipline data only. Not
+-- security_invoker, so it runs as its owner and can see past the own-row
+-- policy above; the WHERE clause and the column list are therefore the entire
+-- public exposure. Adding a column here makes that column public.
+--
+-- NOT PRESENT IN THE LIVE DATABASE YET: supabase/migrations/pre-phase-13.sql
+-- (2). Phase 13 depends on it.
+create or replace view public_profiles
+with (security_invoker = false) as
+  select p.id, p.username, p.display_name, p.avatar_url, p.challenge_start
+    from profiles p
+   where p.is_public and p.onboarded;
+
+grant select on public_profiles to anon, authenticated;
+
+-- See supabase/migrations/pre-phase-13.sql (5a). "for all" on daily_logs does
+-- not currently cover DELETE in the live project.
+drop policy if exists "daily_logs: delete own" on daily_logs;
+create policy "daily_logs: delete own" on daily_logs
+  for delete using (auth.uid() = user_id);
 
 -- Every user-owned table: full access to own rows only.
 do $own$
@@ -445,3 +543,37 @@ end $fn$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function handle_new_user();
+
+-- ---------------------------------------------------------------------------
+-- Stored procedures that already exist in the live project.
+--
+-- Read back from the PostgREST spec; the bodies could not be. They were
+-- provisioned with the project, so they are listed here as an inventory rather
+-- than as definitions this file can recreate. Signatures:
+--
+--   ensure_day_logs(p_date date)
+--     Seeds the current day's daily_logs rows. Named in CLAUDE.md §13 Phase 3.
+--     lib/tasks/ensure.ts does the same work in TypeScript.
+--
+--   apply_modules(p_modules text[])
+--     Activates/deactivates user_tasks for the selected §5 add-on modules.
+--     lib/tasks/preset.ts is the TypeScript equivalent and is what the app
+--     actually calls, because it also applies the §9 goal presets.
+--
+--   get_leaderboard(p_days int, p_limit int)
+--     Returns user_id, username, display_name, avatar_url, points,
+--     current_streak — discipline only, which is what §4 requires. Verified by
+--     calling it: p_days 7 gives the weekly board, a large p_days the all-time
+--     one. This is the right primitive for Phase 13.
+--
+--   ai_remaining(p_route text, p_limit int, p_window interval)
+--     Remaining AI calls for the current user against the §8.9 quotas.
+--
+--   get_streak(p_user uuid)
+--     Current streak for one user.
+--
+-- There is NO award_achievement RPC, and supabase/migrations/pre-phase-13.sql
+-- (1) drops it if one is ever added. Badges are written only by the service
+-- role (lib/stats/load.ts), because they appear on the public profile and so
+-- must not be self-awardable.
+-- ---------------------------------------------------------------------------

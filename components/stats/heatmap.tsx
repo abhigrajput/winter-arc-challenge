@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import type { DaySummary } from '@/lib/calc/streak';
 import { STREAK_THRESHOLD } from '@/lib/calc/streak';
+import type { HeatmapCell } from '@/lib/stats/heatmap';
 
 /**
  * 13x7 completion heatmap for the whole arc.
@@ -12,7 +12,7 @@ export function CompletionHeatmap({
   weeks,
   today,
 }: {
-  weeks: DaySummary[][];
+  weeks: HeatmapCell[][];
   today: string;
 }) {
   if (weeks.length === 0) {
@@ -28,18 +28,28 @@ export function CompletionHeatmap({
       <div className="flex gap-1 overflow-x-auto">
         {weeks.map((week, weekIndex) => (
           <div key={weekIndex} className="flex flex-col gap-1">
-            {week.map((day) => (
-              <span
-                key={day.date}
-                title={`${day.date}: ${day.active > 0 ? `${day.completed}/${day.active}` : 'no tasks'}`}
-                aria-label={`${day.date}, ${day.active > 0 ? `${day.completed} of ${day.active} done` : 'nothing logged'}`}
-                className={cn(
-                  'size-3 rounded-[2px]',
-                  shade(day),
-                  day.date === today && 'ring-1 ring-foreground/60',
-                )}
-              />
-            ))}
+            {week.map((day) =>
+              day.inRange ? (
+                <span
+                  key={day.date}
+                  title={`Day ${day.dayNumber} · ${day.date}: ${day.active > 0 ? `${day.completed}/${day.active}` : 'no tasks'}`}
+                  aria-label={`Day ${day.dayNumber}, ${day.active > 0 ? `${day.completed} of ${day.active} done` : 'nothing logged'}`}
+                  className={cn(
+                    'size-3 rounded-[2px]',
+                    shade(day),
+                    day.date === today && 'ring-1 ring-foreground/60',
+                  )}
+                />
+              ) : (
+                // Past day 90: outside the arc, so it is not a missed day.
+                <span
+                  key={day.date}
+                  aria-hidden
+                  title="Past day 90"
+                  className="size-3 rounded-[2px] border border-dashed border-border/60"
+                />
+              ),
+            )}
           </div>
         ))}
       </div>
@@ -57,7 +67,7 @@ export function CompletionHeatmap({
   );
 }
 
-function shade(day: DaySummary): string {
+function shade(day: HeatmapCell): string {
   if (day.active === 0) return 'bg-muted';
   const ratio = day.completed / day.active;
   if (ratio === 0) return 'bg-muted';

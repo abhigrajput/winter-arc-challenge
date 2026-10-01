@@ -2,7 +2,7 @@ import 'server-only';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import type { ProfileRow } from '@/lib/supabase/types';
 import { challengeDay, localDate } from '@/lib/calc/day';
-import { summariseDays, type DaySummary } from '@/lib/calc/streak';
+import { summariseDays } from '@/lib/calc/streak';
 import { loadDisciplineStats, type DisciplineStats } from '@/lib/tasks/stats';
 import { sessionVolume } from '@/lib/calc/progression';
 import { movingAverage, weightTrend, type TrendPoint, type WeightTrend } from '@/lib/calc/body';
@@ -244,29 +244,5 @@ async function bestPullUpReps(userId: string): Promise<number> {
   return (sets ?? []).reduce((best, row) => Math.max(best, row.reps ?? 0), 0);
 }
 
-/** Groups day summaries into weeks for the heatmap. */
-export function heatmapWeeks(days: DaySummary[], startDate: string | null): DaySummary[][] {
-  if (!startDate) return [];
-  const byDate = new Map(days.map((d) => [d.date, d]));
-  const weeks: DaySummary[][] = [];
-
-  for (let week = 0; week < 13; week += 1) {
-    const row: DaySummary[] = [];
-    for (let offset = 0; offset < 7; offset += 1) {
-      const date = addDays(startDate, week * 7 + offset);
-      row.push(byDate.get(date) ?? { date, completed: 0, active: 0 });
-    }
-    weeks.push(row);
-  }
-
-  return weeks;
-}
-
-function addDays(isoDate: string, days: number): string {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const date = new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1));
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
+export { heatmapWeeks, type HeatmapCell } from './heatmap';
 export { summariseDays };
