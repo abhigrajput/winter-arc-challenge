@@ -230,9 +230,31 @@ image.
 The upload form ghosts the previous shot behind the new one for alignment, and a `clip-path`
 slider wipes between the earliest and latest photo for each angle.
 
+## Face
+
+`/face` carries both face modules and shows only the ones the user switched on.
+
+**Skin (§8.3)** — a daily log (AM/PM routine, breakout score 0-5, dairy, notes), a weekly trend
+chart, the AM/PM routine builder, and the four permitted OTC actives with starting doses and
+cautions. Completing a routine ticks its daily task; clearing it un-ticks again.
+
+The correlation card pairs breakout score against sleep, water, junk-food adherence and dairy.
+It is built to under-claim: nothing is shown below seven paired days, a weak relationship reports
+"no clear link" rather than a number, a flat series returns null instead of a fake zero, and the
+card is labelled **"Correlation, not proof."** Tests assert the summaries never use causal wording.
+
+Sustained severe scores, or notes mentioning cysts, nodules or scarring, raise a dermatologist
+referral. No prescription medication is ever named — a test greps the whole module for it.
+
+**Jawline (§8.4)** — leads with what actually drives it (facial fat, neck and posture, fixed bone
+structure), ties to the body-fat trend, and gives light progressive neck and posture drills that
+tick the `neck_posture` task. A "not recommended" section names jaw devices, mewing and
+bone-reshaping claims and says why. Tests assert none of it is ever promoted.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
 5 (exercise library + workout logger), 6 (AI plans),
-7 (nutrition) and 8 (body tracking + photos) are done.
+7 (nutrition), 8 (body tracking + photos) and 9 (face modules)
+are done.

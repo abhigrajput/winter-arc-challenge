@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Apple, CalendarCheck, Dumbbell, Scale, Sparkles } from 'lucide-react';
+import { Apple, CalendarCheck, Dumbbell, Scale, Smile } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ITEMS = [
@@ -10,7 +10,7 @@ const ITEMS = [
   { href: '/train', label: 'Train', icon: Dumbbell },
   { href: '/nutrition', label: 'Food', icon: Apple },
   { href: '/body', label: 'Body', icon: Scale },
-  { href: '/plan', label: 'Plan', icon: Sparkles },
+  { href: '/face', label: 'Face', icon: Smile },
 ] as const;
 
 export function AppNav() {

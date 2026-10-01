@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ListChecks, LogOut } from 'lucide-react';
+import { ListChecks, LogOut, Sparkles } from 'lucide-react';
 import { AppNav } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
@@ -23,6 +23,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="mr-2 font-mono text-xs text-muted-foreground">
               {profile?.username ?? email}
             </span>
+            <Button asChild variant="ghost" size="icon" aria-label="Plans">
+              <Link href="/plan">
+                <Sparkles />
+              </Link>
+            </Button>
             <Button asChild variant="ghost" size="icon" aria-label="Manage tasks">
               <Link href="/tasks">
                 <ListChecks />
