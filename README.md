@@ -202,9 +202,37 @@ toggling them, so removing an entry un-ticks the task again.
 `ai_estimate` — which map onto those three routes. `supabase/schema.sql` had it wrong and is
 now corrected.
 
+## Body tracking
+
+`/body` covers §8.6: a weight chart, tape measurements, and progress photos.
+
+Daily scale weight is noise, so the chart draws the **7-day moving average** and hides the daily
+readings behind a toggle. The average is computed by date rather than by row count, so a gap in
+logging widens the window instead of silently skipping days. Saving a weight also updates
+`profiles.weight_kg`, which the calorie maths reads.
+
+Measurements merge rather than overwrite — a blank field keeps whatever is already saved for that
+day — and the body-fat estimate is recomputed from the tape on every write, so it can never drift
+from the numbers it came from.
+
+### Photos
+
+Private bucket, `{user_id}/{date}-{angle}.jpg`, angles constrained by the database to
+`front | side | back | face`. Verified against the live project: an unsigned fetch is refused,
+storage RLS blocks a write into another user's folder, and deleting removes both the row and the
+file.
+
+URLs are signed for 60 seconds (§11). Two consequences the code handles explicitly: photos load
+**eagerly**, because a lazily loaded photo would often request an already expired link; and a
+failed load offers a refresh that re-renders with freshly signed URLs rather than showing a broken
+image.
+
+The upload form ghosts the previous shot behind the new one for alignment, and a `clip-path`
+slider wipes between the earliest and latest photo for each angle.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
-5 (exercise library + workout logger), 6 (AI plans)
-and 7 (nutrition) are done.
+5 (exercise library + workout logger), 6 (AI plans),
+7 (nutrition) and 8 (body tracking + photos) are done.
