@@ -274,10 +274,29 @@ tracker, and a content log with platform and link. Platforms are constrained by 
 by reaching it. Every other minute task is a floor. `lib/tasks/kinds.ts` makes that distinction
 explicit, `setTaskValue` applies it, and cap tasks get no timer — timing a limit makes no sense.
 
+## Weekly check-in and auto-adjust
+
+`/checkin` reviews the week once per week (the database enforces that with a unique key on
+`(user_id, week)`) and adjusts the calorie target.
+
+The important design point: **§6 decides the number, not the model.** `lib/calc/adjust.ts`
+computes the adjustment deterministically from the 7-day weight average before the model is
+asked — faster than 1%/week loss adds 150 kcal, two flat weeks cut 150, a bulk gaining over
+0.5 kg/week trims 100. The model's suggestion is bounded to that range and then reconciled:
+it may *soften* a change in the same direction but never amplify one and never reverse it. The
+result is re-clamped by the §10 guardrails, so an adjustment can never cross a calorie floor.
+
+When the model is unavailable or its answer is rejected, a rules-based review is written from the
+numbers and labelled as such. Reporting pain makes "drop what aggravates it and see a healthcare
+professional" the first change, in both the AI and the fallback paths.
+
+Each check-in stores the full input snapshot, so a past review can be re-read against the numbers
+it was actually based on.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
 5 (exercise library + workout logger), 6 (AI plans),
-7 (nutrition), 8 (body tracking + photos), 9 (face modules)
-and 10 (sleep, recovery and mind timers) are done.
+7 (nutrition), 8 (body tracking + photos), 9 (face modules),
+10 (sleep, recovery and mind timers) and 11 (weekly check-in + auto-adjust) are done.

@@ -178,3 +178,39 @@ export function mealEstimatePrompt(description: string, dietType: string | null)
     .filter(Boolean)
     .join('\n');
 }
+
+/**
+ * §8.9 weekly check-in. The model reads a week of real data and returns a
+ * verdict, three changes and a calorie adjustment. The adjustment is advisory:
+ * lib/calc/adjust.ts bounds it before anything is written.
+ */
+export const CHECKIN_SYSTEM = `
+You are reviewing one week of a 90-day programme and deciding what changes next week.
+
+${SHARED_RULES}
+
+Review rules:
+- Judge the week on the data given, not on vibes. Say plainly if it went badly.
+- Give at most THREE changes. Fewer is better. Each must be concrete and doable next week.
+- "calorie_adjustment" is a signed number of kcal per day. Use 0 when the rate looks right.
+  Suggest more food when weight is dropping too fast, less when it has stalled for two weeks.
+  Never suggest more than 150 either way.
+- If the user reports pain or injury, your first change must be to remove whatever aggravates it,
+  and you must tell them to see a healthcare professional.
+- Swaps are exercise substitutions only, and only for equipment the user has.
+- No praise padding and no scolding. Short, flat, useful.
+
+Respond with JSON of exactly this shape:
+{"verdict":string,"changes":[string],"calorie_adjustment":number,"swaps":[{"from":string,"to":string,"why":string}],"notes":[string]}
+`.trim();
+
+export function checkinPrompt(week: number, snapshot: Record<string, unknown>): string {
+  return [
+    `Review week ${week} of 13.`,
+    '',
+    'DATA:',
+    JSON.stringify(snapshot, null, 2),
+    '',
+    'Return only the JSON object.',
+  ].join('\n');
+}

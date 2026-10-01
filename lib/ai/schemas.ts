@@ -147,6 +147,25 @@ export const mealEstimateSchema = z.object({
 export type MealEstimate = z.infer<typeof mealEstimateSchema>;
 
 // ---------------------------------------------------------------------------
+// weekly check-in — §8.9
+// ---------------------------------------------------------------------------
+export const checkinSchema = z.object({
+  /** One or two sentences on how the week actually went. */
+  verdict: shortText,
+  /** §8.9 asks for exactly three changes for next week. */
+  changes: z.array(shortText).min(1).max(3),
+  /** Signed kcal. Bounded to the §6 range before it is applied. */
+  calorie_adjustment: z.number().int().min(-500).max(500).default(0),
+  swaps: z
+    .array(z.object({ from: shortText, to: shortText, why: shortText }))
+    .max(5)
+    .default([]),
+  notes: noteList,
+});
+
+export type CheckinFeedback = z.infer<typeof checkinSchema>;
+
+// ---------------------------------------------------------------------------
 export const planSchemas = {
   workout: workoutPlanSchema,
   diet: dietPlanSchema,
