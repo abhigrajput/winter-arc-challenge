@@ -293,10 +293,31 @@ professional" the first change, in both the AI and the fallback paths.
 Each check-in stores the full input snapshot, so a past review can be re-read against the numbers
 it was actually based on.
 
+## Stats and achievements
+
+`/stats` shows a 13x7 completion heatmap for the whole arc (shaded with the 80% streak bar as its
+own step, so a glance shows which days actually banked), the weight trend, session volume, totals,
+and a breakdown of where the points came from. `/achievements` lists all twelve §8.11 badges with
+earned ones first.
+
+The **Abs ETA** card (§8.2) projects weeks from the current body-fat estimate to the range where
+abs usually show, at the current rate of loss. It is shown as a range, it says the estimate is
+good to about four points either way, and it refuses to project at all while weight is steady or
+rising rather than inventing a date.
+
+### Badges are granted server-side
+
+The live database has **no INSERT policy on `achievements`** for ordinary users. That is a
+safeguard rather than a gap: badges appear on the public profile (§8.12), so a user must not be
+able to award themselves one. `lib/stats/load.ts` grants them with the service-role client,
+always scoped to the authenticated user id, and evaluation is idempotent so it can run on every
+page load.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
 5 (exercise library + workout logger), 6 (AI plans),
 7 (nutrition), 8 (body tracking + photos), 9 (face modules),
-10 (sleep, recovery and mind timers) and 11 (weekly check-in + auto-adjust) are done.
+10 (sleep, recovery and mind timers), 11 (weekly check-in + auto-adjust)
+and 12 (stats + achievements) are done.

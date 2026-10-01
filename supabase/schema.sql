@@ -298,6 +298,11 @@ create table if not exists content_posts (
   title    text
 );
 
+-- VERIFIED IN THE LIVE DATABASE: ordinary users cannot INSERT here — the attempt
+-- returns 42501. That is the right call rather than a gap: badges appear on the
+-- public profile (§8.12), so a user must not be able to award themselves one.
+-- The app grants them with the service-role client in lib/stats/load.ts, always
+-- scoped to the authenticated user id.
 create table if not exists achievements (
   user_id   uuid not null references profiles (id) on delete cascade,
   code      text not null,
