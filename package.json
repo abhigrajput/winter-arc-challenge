@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:exercises": "tsx scripts/seed-exercises.mts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -41,6 +42,7 @@
     "postcss": "^8.5.28",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.2"
   }

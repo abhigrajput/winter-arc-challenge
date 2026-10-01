@@ -174,26 +174,38 @@ create table if not exists exercises (
   video_url      text
 );
 
+-- Corrected against the live database: this table uses session_date /
+-- started_at / finished_at / plan_day, not the log_date / split / completed_at
+-- shape the brief implies. Duration is derived from the timestamps and volume
+-- is computed from the sets rather than stored.
 create table if not exists workout_sessions (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references profiles (id) on delete cascade,
-  log_date     date not null,
-  split        text,
-  duration_min int,
-  total_volume numeric,
-  notes        text,
-  completed_at timestamptz
+  session_date date not null,
+  plan_week    int,
+  plan_day     text,              -- split day name: Push, Pull, Upper, ...
+  started_at   timestamptz,
+  finished_at  timestamptz,       -- null while the session is in progress
+  session_rpe  int,
+  soreness     int,
+  notes        text
 );
 
+-- Corrected against the live database: carries its own user_id (so RLS does
+-- not need to reach through the session), numbers sets with set_no, and has a
+-- duration_sec column for timed holds such as dead hangs and planks.
 create table if not exists workout_sets (
-  id          uuid primary key default gen_random_uuid(),
-  session_id  uuid not null references workout_sessions (id) on delete cascade,
-  exercise_id int not null references exercises (id),
-  set_index   int not null,
-  reps        int,
-  weight_kg   numeric,
-  rpe         numeric,
-  is_pr       boolean default false
+  id           uuid primary key default gen_random_uuid(),
+  session_id   uuid not null references workout_sessions (id) on delete cascade,
+  user_id      uuid not null references profiles (id) on delete cascade,
+  exercise_id  int not null references exercises (id),
+  set_no       int not null,
+  reps         int,
+  weight_kg    numeric,
+  duration_sec int,
+  rpe          numeric,
+  is_pr        boolean default false,
+  created_at   timestamptz default now()
 );
 
 -- ---------------------------------------------------------------------------
@@ -376,20 +388,11 @@ begin
   end loop;
 end $own$;
 
--- workout_sets has no user_id — ownership comes through the parent session.
+-- workout_sets carries user_id directly, so it uses the same owner-only rule
+-- as every other user table.
 drop policy if exists "workout_sets: all own" on workout_sets;
 create policy "workout_sets: all own" on workout_sets
-  for all using (
-    exists (
-      select 1 from workout_sessions s
-      where s.id = workout_sets.session_id and s.user_id = auth.uid()
-    )
-  ) with check (
-    exists (
-      select 1 from workout_sessions s
-      where s.id = workout_sets.session_id and s.user_id = auth.uid()
-    )
-  );
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
 -- Storage: private bucket, owner-only. Signed URLs (60 s) are the only reads.

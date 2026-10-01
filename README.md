@@ -124,8 +124,37 @@ so custom tasks delete properly.
 
 Both are recorded in `supabase/schema.sql`.
 
+## Training
+
+`lib/exercises.ts` is the source of truth for the 85-exercise library — name, muscle group,
+equipment, level, cues, common mistakes and the §8.1 progression chains (push-up → diamond →
+archer → pseudo-planche; dead hang → … → weighted pull-up; squat → … → pistol, plus the §8.2 ab
+chains). Push it with:
+
+```bash
+npm run seed:exercises
+```
+
+It upserts on id, so it is safe to re-run; ids are stable because `workout_sets.exercise_id`
+references them.
+
+Session plans are **derived, not stored**: the split rotation (3 full body, 4 upper/lower,
+5 hybrid, 6 PPL) picks the day from how many sessions are already finished, and exercises are
+filtered to the equipment the user can actually reach. Changing equipment or training mode takes
+effect on the next session with no migration.
+
+The logger writes one set at a time, so nothing is lost if the phone dies. PRs are resolved when
+the session is finished, against every set ever logged for that exercise — estimated 1RM (Epley)
+for weighted work, best single-set reps for bodyweight. Finishing a session ticks off the workout
+task for the day.
+
+A third live-schema correction landed here: `workout_sessions` uses
+`session_date / started_at / finished_at / plan_day` (duration derived, volume computed) and
+`workout_sets` uses `set_no`, carries its own `user_id` and has a `duration_sec` column.
+`supabase/schema.sql` had both wrong and is now fixed.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
-engine), 3 (today checklist + streaks + points) and 4 (task management + goal presets + modules)
-are done.
+engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
+and 5 (exercise library + workout logger) are done.
