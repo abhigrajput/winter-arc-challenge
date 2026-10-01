@@ -153,8 +153,39 @@ A third live-schema correction landed here: `workout_sessions` uses
 `workout_sets` uses `set_no`, carries its own `user_id` and has a `duration_sec` column.
 `supabase/schema.sql` had both wrong and is now fixed.
 
+## AI plans
+
+`POST /api/ai/plan` generates a workout, diet or skincare plan for a week. The §4 pipeline is
+strict: strip fences → JSON.parse → zod validate → §10 guardrail check → save, retrying once with
+the failure reasons fed back to the model before giving up.
+
+| File | Role |
+| --- | --- |
+| `lib/ai/schemas.ts` | Response shapes, fence stripping, parse + validate |
+| `lib/ai/prompts.ts` | System and user prompts; profile and recent data as JSON |
+| `lib/ai/guardrails.ts` | §10 enforcement on model output |
+| `lib/ai/pipeline.ts` | The retry loop |
+| `lib/ai/fallback.ts` | Template plans shown when generation is rejected |
+| `lib/ai/usage.ts` | Server-side rate limits via `ai_usage` |
+
+Guardrails reject banned substances, prescription medication, dehydration cuts, extreme fasting,
+jaw-device and mewing claims, and any shaming or "earn your food" framing — searched across every
+nested string, not just top-level notes. They also enforce the calorie floors, the under-18 rules
+(no supplements, no max-effort testing, ±250 kcal), the one-new-active skincare rule, and a
+dermatologist referral where the plan describes severe acne. A rejected plan is logged in
+`ai_plans.content.rejections` and the template is shown instead. Failed generations do not
+consume the user's quota.
+
+### Provider configuration
+
+CLAUDE.md §1 specifies the Claude API. `lib/ai/provider.ts` resolves whichever credentials are
+actually present — `ANTHROPIC_API_KEY` first, else `DEEPSEEK_API_KEY` — so the rest of the code
+is provider-agnostic. With neither configured (or with a key the provider rejects) every route
+still works and returns the template plan.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
-and 5 (exercise library + workout logger) are done.
+5 (exercise library + workout logger) and 6 (AI plans)
+are done.
