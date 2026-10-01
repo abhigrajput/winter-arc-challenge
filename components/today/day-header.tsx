@@ -1,4 +1,4 @@
-import { Flame } from 'lucide-react';
+import { Flame, HeartPulse } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Phase } from '@/lib/calc/day';
 import { CHALLENGE_DAYS } from '@/lib/calc/day';
@@ -11,12 +11,15 @@ export function DayHeader({
   streak,
   progress,
   points,
+  recovery,
 }: {
   day: number;
   phase: Phase;
   streak: number;
   progress: TodayProgress;
   points: number;
+  /** §8.10: recovery score, null until sleep is logged. */
+  recovery: number | null;
 }) {
   return (
     <header className="space-y-4">
@@ -34,12 +37,29 @@ export function DayHeader({
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5">
-          <Flame
-            className={cn('size-4', streak > 0 ? 'text-primary' : 'text-muted-foreground')}
-            aria-hidden
-          />
-          <span className="font-mono text-sm">{streak}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          {recovery !== null ? (
+            <div
+              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5"
+              title="Recovery score"
+            >
+              <HeartPulse
+                className={cn(
+                  'size-4',
+                  recovery < 50 ? 'text-destructive' : recovery >= 75 ? 'text-primary' : 'text-muted-foreground',
+                )}
+                aria-hidden
+              />
+              <span className="font-mono text-sm">{recovery}</span>
+            </div>
+          ) : null}
+          <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5">
+            <Flame
+              className={cn('size-4', streak > 0 ? 'text-primary' : 'text-muted-foreground')}
+              aria-hidden
+            />
+            <span className="font-mono text-sm">{streak}</span>
+          </div>
         </div>
       </div>
 

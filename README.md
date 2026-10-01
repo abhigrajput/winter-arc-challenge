@@ -251,10 +251,33 @@ structure), ties to the body-fat trend, and gives light progressive neck and pos
 tick the `neck_posture` task. A "not recommended" section names jaw devices, mewing and
 bone-reshaping claims and says why. Tests assert none of it is ever promoted.
 
+## Sleep, recovery and mind
+
+**Sleep (§8.7)** — a bed/wake/quality card on `/today`. Duration handles the midnight wrap and
+refuses implausible nights rather than storing a misleading number; the night is attributed to the
+day the user woke up. Hitting 7-9 hours ticks the sleep task.
+
+**Recovery (§8.7)** — a 0-100 score from sleep hours, sleep quality, soreness and the previous
+day's session RPE, shown in the `/today` header. Missing inputs are dropped and the remaining
+weights renormalised, so logging only sleep gives a usable number instead of an artificially low
+one, and a rest day is not punished for having no session. A low score tells the user to go
+lighter.
+
+**Mind, spirit and work (§8.8)** — count-up timers on minute-based tasks that log straight into
+them (derived from a start timestamp, so a backgrounded tab stays accurate), an 18-chapter Gita
+tracker, and a content log with platform and link. Platforms are constrained by the database to
+`youtube | instagram | other`.
+
+### A rule the checklist was getting backwards
+
+"Social media under 30 min" (§9) is a **cap**: it is satisfied by staying *below* its target, not
+by reaching it. Every other minute task is a floor. `lib/tasks/kinds.ts` makes that distinction
+explicit, `setTaskValue` applies it, and cap tasks get no timer — timing a limit makes no sense.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
 5 (exercise library + workout logger), 6 (AI plans),
-7 (nutrition), 8 (body tracking + photos) and 9 (face modules)
-are done.
+7 (nutrition), 8 (body tracking + photos), 9 (face modules)
+and 10 (sleep, recovery and mind timers) are done.

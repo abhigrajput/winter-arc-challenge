@@ -4,6 +4,8 @@ import { useOptimistic, useState, useTransition } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { setTaskValue, toggleTask } from '@/app/(app)/today/actions';
+import { TaskTimer } from '@/components/today/task-timer';
+import { isCapTask, isNumericTaskComplete } from '@/lib/tasks/kinds';
 
 export interface TaskItem {
   id: string;
@@ -13,6 +15,8 @@ export interface TaskItem {
   unit: string;
   completed: boolean;
   value: number;
+  /** Template slug, so cap tasks and timers can be recognised. */
+  slug: string | null;
 }
 
 const CATEGORY_ORDER = ['discipline', 'body', 'face', 'mind', 'spirit', 'work'] as const;
@@ -66,7 +70,11 @@ export function TaskList({ tasks, logDate }: { tasks: TaskItem[]; logDate: strin
   function runValue(task: TaskItem, value: number) {
     const next = Math.max(0, Math.round(value * 100) / 100);
     startTransition(async () => {
-      applyOptimistic({ id: task.id, completed: next >= task.target, value: next });
+      applyOptimistic({
+        id: task.id,
+        completed: isNumericTaskComplete(next, task.target, task.slug),
+        value: next,
+      });
       const result = await setTaskValue({ taskId: task.id, logDate, value: next });
       setError(result.error ?? null);
     });
@@ -198,6 +206,18 @@ function NumericRow({
           </StepButton>
         </div>
       </div>
+
+      {/* §8.8: minute-based tasks get a timer that logs straight into them.
+          A cap task is about staying under a limit, so timing it makes no sense. */}
+      {task.unit === 'min' && !isCapTask(task.slug) ? (
+        <div className="flex justify-end">
+          <TaskTimer
+            targetMinutes={task.target}
+            loggedMinutes={task.value}
+            onStop={(minutes) => onSet(minutes)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

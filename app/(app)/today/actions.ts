@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { isWritableLogDate } from '@/lib/calc/day';
+import { isNumericTaskComplete } from '@/lib/tasks/kinds';
 
 /**
  * Task logging. §4: writes are accepted only for yesterday, today and
@@ -103,15 +104,18 @@ export async function setTaskValue(input: unknown): Promise<LogResult> {
 
   const { data: task } = await supabase
     .from('user_tasks')
-    .select('id, target')
+    .select('id, target, template_id')
     .eq('id', taskId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (!task) return { error: 'Task not found.' };
 
-  const target = task.target ?? 0;
-  const completed = target > 0 && value >= target;
+  // "Under 30 min" style tasks are satisfied by staying below the target, so
+  // completion cannot simply be value >= target.
+  const slug = await templateSlug(supabase, task.template_id);
+  const target = Number(task.target ?? 0);
+  const completed = isNumericTaskComplete(value, target, slug);
 
   const { error } = await supabase
     .from('daily_logs')
@@ -128,4 +132,18 @@ export async function setTaskValue(input: unknown): Promise<LogResult> {
 
   revalidatePath('/today');
   return {};
+}
+
+/** Template slug for a task, used to tell cap tasks from floor tasks. */
+async function templateSlug(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  templateId: number | null,
+): Promise<string | null> {
+  if (templateId === null) return null;
+  const { data } = await supabase
+    .from('task_templates')
+    .select('slug')
+    .eq('id', templateId)
+    .maybeSingle();
+  return data?.slug ?? null;
 }
