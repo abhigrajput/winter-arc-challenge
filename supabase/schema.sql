@@ -221,7 +221,8 @@ create table if not exists food_entries (
   protein_g   numeric,
   carbs_g     numeric,
   fat_g       numeric,
-  source      text,   -- plan | quick_add | ai_estimate
+  -- Verified against the live CHECK constraint: exactly these, or null.
+  source      text check (source in ('manual', 'plan', 'ai_estimate')),
   created_at  timestamptz default now()
 );
 

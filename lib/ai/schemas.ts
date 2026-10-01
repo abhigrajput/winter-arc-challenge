@@ -120,6 +120,33 @@ export const skincarePlanSchema = z.object({
 export type SkincarePlan = z.infer<typeof skincarePlanSchema>;
 
 // ---------------------------------------------------------------------------
+// meal estimate — §8.5(c)
+// ---------------------------------------------------------------------------
+export const estimatedItemSchema = z.object({
+  food: shortText,
+  quantity: shortText,
+  calories: z.number().int().min(0).max(3000),
+  protein_g: z.number().min(0).max(300),
+  carbs_g: z.number().min(0).max(400),
+  fat_g: z.number().min(0).max(200),
+});
+
+export const mealEstimateSchema = z.object({
+  items: z.array(estimatedItemSchema).min(1).max(15),
+  total: z.object({
+    calories: z.number().int().min(0).max(6000),
+    protein_g: z.number().min(0).max(500),
+    carbs_g: z.number().min(0).max(800),
+    fat_g: z.number().min(0).max(300),
+  }),
+  /** Flagged when the description was too vague to estimate confidently. */
+  low_confidence: z.boolean().default(false),
+  note: shortText.optional(),
+});
+
+export type MealEstimate = z.infer<typeof mealEstimateSchema>;
+
+// ---------------------------------------------------------------------------
 export const planSchemas = {
   workout: workoutPlanSchema,
   diet: dietPlanSchema,

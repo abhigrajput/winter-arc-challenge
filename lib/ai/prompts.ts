@@ -149,3 +149,32 @@ export function retryPrompt(violations: string[]): string {
     'Produce a corrected JSON object that fixes every point. Return only the JSON.',
   ].join('\n');
 }
+
+/**
+ * §8.5(c): free-text meal to macros. Deliberately narrow — it estimates what
+ * was eaten and nothing else, so it cannot wander into advice.
+ */
+export const MEAL_ESTIMATE_SYSTEM = `
+You estimate the calories and macros of a meal someone describes in plain language.
+
+Rules:
+- Assume everyday Indian home cooking unless the description says otherwise.
+- Where a quantity is missing, assume one normal serving and say so in "note".
+- Be realistic, not flattering. Household measures like "1 katori" or "2 roti" are normal input.
+- Set "low_confidence" to true when the description is too vague to estimate within about 20%.
+- Estimate only. Never give advice, never comment on the food choice, never mention weight.
+- Output ONLY a single JSON object. No prose, no markdown fences.
+
+Respond with JSON of exactly this shape:
+{"items":[{"food":string,"quantity":string,"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number}],"total":{"calories":number,"protein_g":number,"carbs_g":number,"fat_g":number},"low_confidence":boolean,"note":string}
+`.trim();
+
+export function mealEstimatePrompt(description: string, dietType: string | null): string {
+  return [
+    dietType ? `The user's diet is "${dietType}".` : '',
+    'Estimate this meal:',
+    description,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}

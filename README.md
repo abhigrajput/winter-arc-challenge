@@ -183,9 +183,28 @@ actually present — `ANTHROPIC_API_KEY` first, else `DEEPSEEK_API_KEY` — so t
 is provider-agnostic. With neither configured (or with a key the provider rejects) every route
 still works and returns the template plan.
 
+## Nutrition
+
+`/nutrition` shows the three §8.5 rings (calories, protein, water) and offers all three logging
+routes:
+
+1. **Tick a meal off the diet plan** — pulls the macros from the active `ai_plans` diet plan for
+   the current week.
+2. **Quick add** — Indian presets filtered by diet type, with mess items first in hostel mode,
+   plus a free-form calories/protein form.
+3. **Describe a meal** — `POST /api/ai/meal-estimate` (30/day) turns "2 roti, dal, paneer 100g"
+   into items and macros that the user confirms before anything is written.
+
+Every write re-derives the protein, calorie and water tasks from the day's totals rather than
+toggling them, so removing an entry un-ticks the task again.
+
+`food_entries.source` is constrained by the live database to exactly `manual`, `plan` and
+`ai_estimate` — which map onto those three routes. `supabase/schema.sql` had it wrong and is
+now corrected.
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
 engine), 3 (today checklist + streaks + points) 4 (task management + goal presets + modules)
-5 (exercise library + workout logger) and 6 (AI plans)
-are done.
+5 (exercise library + workout logger), 6 (AI plans)
+and 7 (nutrition) are done.
