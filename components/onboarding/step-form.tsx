@@ -18,11 +18,14 @@ export function StepForm({
   action,
   back,
   submitLabel = 'Continue',
+  secondary,
   children,
 }: {
   action: (prev: StepState, formData: FormData) => Promise<StepState>;
   back: string | null;
   submitLabel?: string;
+  /** Extra controls under the main button, inside the form (e.g. a skip submit). */
+  secondary?: (props: { pending: boolean }) => React.ReactNode;
   children: (props: StepFormRenderProps) => React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState<StepState, FormData>(action, {});
@@ -50,6 +53,8 @@ export function StepForm({
           {submitLabel}
         </Button>
       </div>
+
+      {secondary ? secondary({ pending }) : null}
     </form>
   );
 }

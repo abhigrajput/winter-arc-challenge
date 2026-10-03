@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "seed:exercises": "tsx scripts/seed-exercises.mts",
-    "verify:bodyfat": "tsx scripts/verify-body-fat-trigger.mts"
+    "verify:bodyfat": "tsx scripts/verify-body-fat-trigger.mts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -35,6 +36,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

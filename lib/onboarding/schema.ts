@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ACTIVITY_VALUES } from '@/lib/calc/tdee';
 import { checkTargetWeight } from '@/lib/calc/guardrails';
+import { normalizeDecimal } from '@/lib/decimal';
 
 /**
  * One schema per onboarding step (§5). Each step saves on submit, so every
@@ -55,8 +56,17 @@ export function previousStep(step: Step): Step | null {
 // ---------------------------------------------------------------------------
 // shared field types
 // ---------------------------------------------------------------------------
+export { normalizeDecimal };
+
 const numberField = (label: string) =>
   z.coerce.number({ message: `${label} is required.` }).finite();
+
+/** Wraps a finished number schema with the decimal normalisation above. */
+const decimal = <T extends z.ZodType>(inner: T) => z.preprocess(normalizeDecimal, inner);
+
+/** Same parsing, but blank is allowed and stored as null. */
+const optionalDecimal = <T extends z.ZodType<number>>(inner: T) =>
+  z.preprocess((v) => normalizeDecimal(v) ?? null, inner.nullable());
 
 export const MODULE_SLUGS = ['abs', 'face_skin', 'jawline', 'running', 'content_creator'] as const;
 
@@ -100,12 +110,16 @@ export const identitySchema = z.object({
 export const bodySchema = z
   .object({
     sex: z.enum(['male', 'female'], { message: 'Pick one.' }),
-    age: numberField('Age').int().min(13, 'Must be 13 or older.').max(100, 'Enter a real age.'),
-    height_cm: numberField('Height').min(100, 'Enter height in cm.').max(250, 'Enter height in cm.'),
-    weight_kg: numberField('Weight').min(25, 'Enter weight in kg.').max(300, 'Enter weight in kg.'),
-    target_weight_kg: numberField('Target weight')
-      .min(25, 'Enter weight in kg.')
-      .max(300, 'Enter weight in kg.'),
+    age: decimal(numberField('Age').int().min(13, 'Must be 13 or older.').max(100, 'Enter a real age.')),
+    height_cm: decimal(
+      numberField('Height').min(100, 'Enter height in cm.').max(250, 'Enter height in cm.'),
+    ),
+    weight_kg: decimal(
+      numberField('Weight').min(25, 'Enter weight in kg.').max(300, 'Enter weight in kg.'),
+    ),
+    target_weight_kg: decimal(
+      numberField('Target weight').min(25, 'Enter weight in kg.').max(300, 'Enter weight in kg.'),
+    ),
     activity_level: numberField('Activity level').refine(
       (v) => ACTIVITY_VALUES.includes(v),
       'Pick an activity level.',
@@ -146,7 +160,9 @@ export const trainingSchema = z
   .object({
     training_mode: z.enum(['gym', 'home', 'hybrid'], { message: 'Pick one.' }),
     equipment: z.array(z.enum(EQUIPMENT_SLUGS)).default([]),
-    max_dumbbell_kg: z.coerce.number().min(0).max(100).nullable().default(null),
+    max_dumbbell_kg: optionalDecimal(
+      z.coerce.number({ message: 'Enter a number.' }).min(0, 'Enter kg.').max(100, 'Enter kg.'),
+    ),
   })
   .superRefine((data, ctx) => {
     if (data.equipment.includes('dumbbells') && !data.max_dumbbell_kg) {
@@ -184,21 +200,29 @@ export const dietSchema = z.object({
 // ---------------------------------------------------------------------------
 export const routineSchema = z.object({
   wake_time: z.string().regex(/^\d{2}:\d{2}$/, 'Pick a wake time.'),
-  sleep_target_h: numberField('Sleep target').min(4, 'At least 4 h.').max(12, 'At most 12 h.'),
+  sleep_target_h: decimal(
+    numberField('Sleep target').min(4, 'At least 4 h.').max(12, 'At most 12 h.'),
+  ),
 });
 
 // ---------------------------------------------------------------------------
 // step 9 — baseline
 // ---------------------------------------------------------------------------
 export const baselineSchema = z.object({
-  waist_cm: z.coerce.number().min(40, 'Enter cm.').max(200, 'Enter cm.'),
-  neck_cm: z.coerce.number().min(20, 'Enter cm.').max(80, 'Enter cm.'),
-  hip_cm: z.coerce.number().min(50, 'Enter cm.').max(200, 'Enter cm.').nullable().default(null),
+  waist_cm: decimal(
+    numberField('Waist').min(40, 'Waist in cm: 40-200.').max(200, 'Waist in cm: 40-200.'),
+  ),
+  neck_cm: decimal(numberField('Neck').min(20, 'Neck in cm: 20-70.').max(70, 'Neck in cm: 20-70.')),
+  hip_cm: optionalDecimal(
+    z.coerce.number({ message: 'Enter a number.' }).min(50, 'Hip in cm: 50-200.').max(200, 'Hip in cm: 50-200.'),
+  ),
 });
 
-/** Women need a hip measurement for the US Navy formula. */
+/** Women need a hip measurement for the US Navy formula; men never send one. */
 export function baselineSchemaFor(sex: 'male' | 'female') {
-  if (sex === 'male') return baselineSchema;
+  if (sex === 'male') {
+    return baselineSchema.transform((data) => ({ ...data, hip_cm: null }));
+  }
   return baselineSchema.superRefine((data, ctx) => {
     if (!data.hip_cm) {
       ctx.addIssue({

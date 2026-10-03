@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
 import { Label } from '@/components/ui/label';
 import { saveMeasurements, type BodyResult } from '@/app/(app)/body/actions';
 
@@ -38,12 +38,9 @@ export function MeasurementForm({
     <form action={action} className="space-y-4 rounded-lg border border-border bg-card p-4">
       <div className="space-y-2">
         <Label htmlFor="weight_kg">Weight (kg)</Label>
-        <Input
+        <DecimalInput
           id="weight_kg"
           name="weight_kg"
-          type="number"
-          step="0.1"
-          inputMode="decimal"
           defaultValue={current.weight_kg}
           placeholder="Optional, but daily is best"
         />
@@ -53,12 +50,9 @@ export function MeasurementForm({
         {FIELDS.map((field) => (
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>{field.label}</Label>
-            <Input
+            <DecimalInput
               id={field.name}
               name={field.name}
-              type="number"
-              step="0.1"
-              inputMode="decimal"
               defaultValue={current[field.name]}
             />
             {field.hint ? (
@@ -70,12 +64,9 @@ export function MeasurementForm({
         {needsHip ? (
           <div className="space-y-2">
             <Label htmlFor="hip_cm">Hip (cm)</Label>
-            <Input
+            <DecimalInput
               id="hip_cm"
               name="hip_cm"
-              type="number"
-              step="0.1"
-              inputMode="decimal"
               defaultValue={current.hip_cm}
             />
             <p className="text-[0.65rem] text-muted-foreground">Widest point</p>

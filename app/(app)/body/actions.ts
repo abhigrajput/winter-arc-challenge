@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { localDate } from '@/lib/calc/day';
 import { navyBodyFat } from '@/lib/calc/bodyfat';
+import { normalizeDecimal } from '@/lib/decimal';
 import { PHOTO_ANGLES, PHOTO_BUCKET, photoPath, type PhotoAngle } from '@/lib/body/angles';
 
 /**
@@ -40,16 +41,16 @@ async function context() {
   return { supabase, profile };
 }
 
-const optionalCm = z
-  .union([z.coerce.number().min(10).max(250), z.literal('')])
-  .optional()
-  .transform((v) => (v === '' || v === undefined ? null : v));
+// Accepts "80,5" as well as "80.5"; blank keeps the stored value.
+const optionalDecimal = (min: number, max: number) =>
+  z.preprocess(normalizeDecimal, z.coerce.number().min(min).max(max).optional()).transform(
+    (v) => v ?? null,
+  );
+
+const optionalCm = optionalDecimal(10, 250);
 
 const measurementInput = z.object({
-  weight_kg: z
-    .union([z.coerce.number().min(25).max(300), z.literal('')])
-    .optional()
-    .transform((v) => (v === '' || v === undefined ? null : v)),
+  weight_kg: optionalDecimal(25, 300),
   waist_cm: optionalCm,
   chest_cm: optionalCm,
   arm_cm: optionalCm,

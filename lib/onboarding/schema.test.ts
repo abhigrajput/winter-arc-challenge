@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   STEPS,
   baselineSchemaFor,
+  normalizeDecimal,
   bodySchema,
   dietSchema,
   identitySchema,
@@ -206,5 +207,58 @@ describe('baselineSchemaFor', () => {
       baselineSchemaFor('female').safeParse({ waist_cm: '74', neck_cm: '32', hip_cm: '96' })
         .success,
     ).toBe(true);
+  });
+});
+
+describe('decimal inputs', () => {
+  it('normalizes comma decimals and blanks', () => {
+    expect(normalizeDecimal('80,5')).toBe('80.5');
+    expect(normalizeDecimal(' 80 ')).toBe('80');
+    expect(normalizeDecimal('')).toBeUndefined();
+    expect(normalizeDecimal(null)).toBeUndefined();
+  });
+
+  it.each([
+    ['80', 80],
+    ['80.5', 80.5],
+    ['80,5', 80.5],
+  ])('accepts waist %s', (input, expected) => {
+    const result = baselineSchemaFor('male').safeParse({ waist_cm: input, neck_cm: '38,2' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.waist_cm).toBe(expected);
+      expect(result.data.neck_cm).toBe(38.2);
+    }
+  });
+
+  it('enforces waist 40-200 and neck 20-70', () => {
+    const bad = baselineSchemaFor('male').safeParse({ waist_cm: '39', neck_cm: '71' });
+    expect(bad.success).toBe(false);
+    if (!bad.success) {
+      expect(bad.error.issues.map((i) => i.path[0]).sort()).toEqual(['neck_cm', 'waist_cm']);
+    }
+    expect(baselineSchemaFor('male').safeParse({ waist_cm: '200', neck_cm: '70' }).success).toBe(true);
+  });
+
+  it('reports a blank measurement as missing, not as out of range', () => {
+    const result = baselineSchemaFor('male').safeParse({ waist_cm: '', neck_cm: '38' });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues[0]?.message).toBe('Waist is required.');
+  });
+
+  it('ignores a hip value from a man', () => {
+    const result = baselineSchemaFor('male').safeParse({ waist_cm: '90', neck_cm: '39', hip_cm: '100' });
+    expect(result.success && result.data.hip_cm).toBe(null);
+  });
+
+  it('accepts comma decimals on the body step', () => {
+    const result = bodySchema.safeParse({ ...validBody, height_cm: '175,5', weight_kg: '72,4' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.height_cm).toBe(175.5);
+  });
+
+  it('treats a blank dumbbell weight as none', () => {
+    const result = trainingSchema.safeParse({ training_mode: 'home', equipment: [], max_dumbbell_kg: '' });
+    expect(result.success && result.data.max_dumbbell_kg).toBe(null);
   });
 });

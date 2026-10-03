@@ -123,7 +123,16 @@ export function ResultStep({
             ) : null}
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Body fat estimate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Add waist + neck on Body page.</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

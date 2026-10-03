@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
+import { Button } from '@/components/ui/button';
 import { Field, OptionCard } from '@/components/onboarding/field';
 import { StepForm } from '@/components/onboarding/step-form';
 import { ACTIVITY_LEVELS } from '@/lib/calc/tdee';
@@ -138,33 +140,26 @@ export function BodyStep({ profile, back }: StepProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Age" htmlFor="age" error={fieldErrors.age}>
-              <Input
+              <DecimalInput
                 id="age"
                 name="age"
-                type="number"
-                inputMode="numeric"
+                integer
                 defaultValue={profile.age ?? ''}
                 required
               />
             </Field>
             <Field label="Height (cm)" htmlFor="height_cm" error={fieldErrors.height_cm}>
-              <Input
+              <DecimalInput
                 id="height_cm"
                 name="height_cm"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
                 defaultValue={profile.height_cm ?? ''}
                 required
               />
             </Field>
             <Field label="Weight (kg)" htmlFor="weight_kg" error={fieldErrors.weight_kg}>
-              <Input
+              <DecimalInput
                 id="weight_kg"
                 name="weight_kg"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
                 defaultValue={profile.weight_kg ?? ''}
                 required
               />
@@ -174,12 +169,9 @@ export function BodyStep({ profile, back }: StepProps) {
               htmlFor="target_weight_kg"
               error={fieldErrors.target_weight_kg}
             >
-              <Input
+              <DecimalInput
                 id="target_weight_kg"
                 name="target_weight_kg"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
                 defaultValue={profile.target_weight_kg ?? ''}
                 required
               />
@@ -346,12 +338,9 @@ export function TrainingStep({ profile, back }: StepProps) {
               htmlFor="max_dumbbell_kg"
               error={fieldErrors.max_dumbbell_kg}
             >
-              <Input
+              <DecimalInput
                 id="max_dumbbell_kg"
                 name="max_dumbbell_kg"
-                type="number"
-                step="0.5"
-                inputMode="decimal"
                 defaultValue={profile.max_dumbbell_kg ?? ''}
               />
             </Field>
@@ -524,12 +513,9 @@ export function RoutineStep({ profile, back }: StepProps) {
             error={fieldErrors.sleep_target_h}
             hint="7-9 h is the range that actually supports training."
           >
-            <Input
+            <DecimalInput
               id="sleep_target_h"
               name="sleep_target_h"
-              type="number"
-              step="0.5"
-              inputMode="decimal"
               defaultValue={profile.sleep_target_h ?? 8}
               required
             />
@@ -557,11 +543,30 @@ export function BaselineStep({
   const needsHip = profile.sex === 'female';
 
   return (
-    <StepForm action={saveBaseline} back={back} submitLabel="See my plan">
+    <StepForm
+      action={saveBaseline}
+      back={back}
+      submitLabel="See my plan"
+      secondary={({ pending }) => (
+        // formNoValidate: skipping must work with the fields left empty.
+        <Button
+          type="submit"
+          name="intent"
+          value="skip"
+          formNoValidate
+          variant="ghost"
+          className="w-full text-muted-foreground"
+          disabled={pending}
+        >
+          Skip — measure later
+        </Button>
+      )}
+    >
       {({ fieldErrors }) => (
         <>
           <p className="text-sm text-muted-foreground">
-            Measure relaxed, first thing, same spot every time. These feed the body fat estimate.
+            Optional. Measure relaxed, first thing, same spot every time. These feed the body fat
+            estimate — you can add them from the Body page later.
           </p>
 
           <Field
@@ -570,12 +575,10 @@ export function BaselineStep({
             error={fieldErrors.waist_cm}
             hint="At the navel, not pulled in."
           >
-            <Input
+            <DecimalInput
               id="waist_cm"
               name="waist_cm"
-              type="number"
-              step="0.1"
-              inputMode="decimal"
+              placeholder="82.5"
               defaultValue={baseline?.waist_cm ?? ''}
               required
             />
@@ -587,12 +590,10 @@ export function BaselineStep({
             error={fieldErrors.neck_cm}
             hint="Just below the larynx."
           >
-            <Input
+            <DecimalInput
               id="neck_cm"
               name="neck_cm"
-              type="number"
-              step="0.1"
-              inputMode="decimal"
+              placeholder="38"
               defaultValue={baseline?.neck_cm ?? ''}
               required
             />
@@ -605,12 +606,10 @@ export function BaselineStep({
               error={fieldErrors.hip_cm}
               hint="At the widest point."
             >
-              <Input
+              <DecimalInput
                 id="hip_cm"
                 name="hip_cm"
-                type="number"
-                step="0.1"
-                inputMode="decimal"
+                placeholder="96"
                 defaultValue={baseline?.hip_cm ?? ''}
                 required
               />

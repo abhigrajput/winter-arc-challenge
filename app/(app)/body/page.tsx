@@ -88,7 +88,14 @@ export default async function BodyPage() {
             </p>
           </CardContent>
         </Card>
-      ) : null}
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Body fat estimate</CardTitle>
+            <CardDescription>Add waist + neck below to get an estimate.</CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       {deltas.length > 0 ? (
         <section className="space-y-2">

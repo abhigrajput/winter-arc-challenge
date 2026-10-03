@@ -151,9 +151,19 @@ export async function saveRoutine(_prev: StepState, formData: FormData): Promise
 /**
  * Baseline writes to body_measurements, not profiles, and also seeds the first
  * body-fat estimate so the result screen has something to show.
+ *
+ * The whole step is optional: "Skip — measure later" (intent=skip) writes
+ * nothing and moves on. The progress cookie records that the step was passed.
  */
 export async function saveBaseline(_prev: StepState, formData: FormData): Promise<StepState> {
   const userId = await requireUserId();
+
+  if (formData.get('intent') === 'skip') {
+    await markReached('baseline', userId);
+    revalidatePath('/onboarding', 'layout');
+    redirect('/onboarding/result');
+  }
+
   const supabase = await createClient();
 
   const { data: profile } = await supabase
