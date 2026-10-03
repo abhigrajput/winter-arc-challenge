@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import type { AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { safeNext } from '@/lib/safe-redirect';
 
@@ -16,6 +17,15 @@ const credentials = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
   next: z.string().optional(),
 });
+
+function logAuthError(op: string, error: AuthError): void {
+  console.error(`[auth] ${op} failed`, {
+    message: error.message,
+    status: error.status,
+    code: error.code,
+    name: error.name,
+  });
+}
 
 async function origin(): Promise<string> {
   const h = await headers();
@@ -39,7 +49,10 @@ export async function signIn(
     password: parsed.data.password,
   });
 
-  if (error) return { error: 'Wrong email or password.' };
+  if (error) {
+    logAuthError('signInWithPassword', error);
+    return { error: error.message };
+  }
 
   redirect(safeNext(parsed.data.next));
 }
@@ -60,7 +73,10 @@ export async function signUp(
     options: { emailRedirectTo: `${await origin()}/auth/callback` },
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    logAuthError('signUp', error);
+    return { error: error.message };
+  }
 
   // No session means the project requires email confirmation.
   if (!data.session) {
@@ -83,6 +99,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   });
 
   if (error || !data.url) {
+    if (error) logAuthError('signInWithOAuth', error);
     redirect(`/login?error=${encodeURIComponent('Google sign-in is unavailable.')}`);
   }
 
