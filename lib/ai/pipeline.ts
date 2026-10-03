@@ -1,5 +1,5 @@
 import 'server-only';
-import { complete, AiRequestError } from '@/lib/ai/provider';
+import { AI_TIME_BUDGET_MS, complete, AiRequestError } from '@/lib/ai/client';
 import { retryPrompt, systemPrompt, userPrompt, type PromptContext } from '@/lib/ai/prompts';
 import { checkPlan, type GuardrailContext } from '@/lib/ai/guardrails';
 import { parseAndValidate, planSchemas, type PlanContent, type PlanType } from '@/lib/ai/schemas';
@@ -21,6 +21,8 @@ export interface GenerationFailure {
   reasons: string[];
   attempts: number;
   status: number;
+  /** provider: the model could not be reached; rejected: its answer failed checks. */
+  kind: 'provider' | 'rejected';
 }
 
 export type GenerationResult = GenerationSuccess | GenerationFailure;
@@ -37,17 +39,31 @@ export async function generatePlan(
   const schema = planSchemas[type];
 
   let reasons: string[] = [];
+  // Both attempts share one budget so a slow retry cannot outlive the function.
+  const deadline = Date.now() + AI_TIME_BUDGET_MS;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     const user = attempt === 1 ? base : `${base}\n\n${retryPrompt(reasons)}`;
 
     let raw: string;
     try {
-      raw = await complete({ system, user });
+      raw = await complete({
+        system,
+        user,
+        tier: 'pro',
+        timeoutMs: deadline - Date.now(),
+        label: `plan:${type}#${attempt}`,
+      });
     } catch (error) {
       // A transport or credential failure will not fix itself on a retry.
       if (error instanceof AiRequestError) {
-        return { ok: false, reasons: [error.message], attempts: attempt, status: error.status };
+        return {
+          ok: false,
+          reasons: [error.message],
+          attempts: attempt,
+          status: error.status,
+          kind: 'provider',
+        };
       }
       throw error;
     }
@@ -67,5 +83,5 @@ export async function generatePlan(
     return { ok: true, plan: parsed.plan, attempts: attempt };
   }
 
-  return { ok: false, reasons, attempts: MAX_ATTEMPTS, status: 502 };
+  return { ok: false, reasons, attempts: MAX_ATTEMPTS, status: 502, kind: 'rejected' };
 }

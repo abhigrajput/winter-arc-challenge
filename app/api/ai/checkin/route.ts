@@ -5,7 +5,7 @@ import { challengeDay, localDate, phaseForDay } from '@/lib/calc/day';
 import { boundSuggestedAdjustment, reconcileAdjustment } from '@/lib/calc/adjust';
 import { clampCalories } from '@/lib/calc/guardrails';
 import { macroTargets } from '@/lib/calc/macros';
-import { complete, AiNotConfiguredError, AiRequestError } from '@/lib/ai/provider';
+import { AI_TIME_BUDGET_MS, complete, AiNotConfiguredError, AiRequestError } from '@/lib/ai/client';
 import { CHECKIN_SYSTEM, checkinPrompt, retryPrompt } from '@/lib/ai/prompts';
 import { checkinSchema, stripFences, type CheckinFeedback } from '@/lib/ai/schemas';
 import { checkPlan } from '@/lib/ai/guardrails';
@@ -21,6 +21,8 @@ import { CHECKIN_LIMIT, checkRateLimit, recordUsage } from '@/lib/ai/usage';
  */
 
 export const dynamic = 'force-dynamic';
+/** V4 Pro reasoning can run 20–60 s; the default function timeout is shorter. */
+export const maxDuration = 60;
 
 const bodySchema = z.object({
   energy: z.number().int().min(1).max(5).nullable().default(null),
@@ -206,10 +208,18 @@ async function generate(
 ): Promise<GenerateResult> {
   const base = checkinPrompt(week, snapshot as Record<string, unknown>);
   let reasons: string[] = [];
+  // Both attempts share one budget so a slow retry cannot outlive the function.
+  const deadline = Date.now() + AI_TIME_BUDGET_MS;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const user = attempt === 1 ? base : `${base}\n\n${retryPrompt(reasons)}`;
-    const raw = await complete({ system: CHECKIN_SYSTEM, user, maxTokens: 1500 });
+    const raw = await complete({
+      system: CHECKIN_SYSTEM,
+      user,
+      tier: 'pro',
+      timeoutMs: deadline - Date.now(),
+      label: `checkin#${attempt}`,
+    });
 
     let json: unknown;
     try {

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { complete, AiNotConfiguredError, AiRequestError } from '@/lib/ai/provider';
+import { complete, AiNotConfiguredError, AiRequestError } from '@/lib/ai/client';
 import { MEAL_ESTIMATE_SYSTEM, mealEstimatePrompt } from '@/lib/ai/prompts';
 import { mealEstimateSchema, stripFences } from '@/lib/ai/schemas';
 import { MEAL_ESTIMATE_LIMIT, checkRateLimit, recordUsage } from '@/lib/ai/usage';
@@ -14,6 +14,8 @@ import { MEAL_ESTIMATE_LIMIT, checkRateLimit, recordUsage } from '@/lib/ai/usage
  */
 
 export const dynamic = 'force-dynamic';
+/** V4 Pro reasoning can run 20–60 s; the default function timeout is shorter. */
+export const maxDuration = 60;
 
 const bodySchema = z.object({
   description: z.string().trim().min(2, 'Describe the meal.').max(300),
@@ -61,7 +63,8 @@ export async function POST(request: NextRequest) {
     raw = await complete({
       system: MEAL_ESTIMATE_SYSTEM,
       user: mealEstimatePrompt(parsed.data.description, profile?.diet_type ?? null),
-      maxTokens: 1200,
+      tier: 'fast',
+      label: 'meal-estimate',
     });
   } catch (error) {
     if (error instanceof AiNotConfiguredError) {

@@ -7,7 +7,7 @@ import { generatePlan } from '@/lib/ai/pipeline';
 import { AI_SOURCE, FALLBACK_SOURCE, fallbackPlan } from '@/lib/ai/fallback';
 import { checkRateLimit, planLimit, recordUsage } from '@/lib/ai/usage';
 import { isPlanType, type PlanType } from '@/lib/ai/schemas';
-import { AiNotConfiguredError } from '@/lib/ai/provider';
+import { AiNotConfiguredError } from '@/lib/ai/client';
 import { buildRecentContext } from '@/lib/ai/context';
 
 /**
@@ -18,6 +18,8 @@ import { buildRecentContext } from '@/lib/ai/context';
  */
 
 export const dynamic = 'force-dynamic';
+/** V4 Pro reasoning can run 20–60 s; the default function timeout is shorter. */
+export const maxDuration = 60;
 
 const bodySchema = z.object({
   type: z.string().refine(isPlanType, 'Unknown plan type.'),
@@ -133,7 +135,10 @@ export async function POST(request: NextRequest) {
       {
         source: FALLBACK_SOURCE,
         plan,
-        reason: 'The generated plan did not pass the safety checks, so here is the template.',
+        reason:
+          result.kind === 'provider'
+            ? 'The coach is unavailable right now, so here is the template.'
+            : 'The generated plan did not pass the safety checks, so here is the template.',
         violations: result.reasons,
       },
       { status: 200 },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,37 +33,49 @@ export function PlanBoard({
   const [notice, setNotice] = useState<string | null>(null);
   const [violations, setViolations] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  // A ref blocks a second click that lands before React re-renders the disabled button.
+  const inFlight = useRef(false);
+  const elapsed = useElapsedSeconds(pending);
 
   const current = local[active];
   const tab = TABS.find((t) => t.type === active)!;
   const left = remaining[active] ?? 0;
 
   function generate() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setNotice(null);
     setViolations([]);
+    const type = active;
 
     startTransition(async () => {
-      const response = await fetch('/api/ai/plan', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: active, week }),
-      });
+      try {
+        const response = await fetch('/api/ai/plan', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ type, week }),
+        });
 
-      const body = await response.json().catch(() => null);
+        const body = await response.json().catch(() => null);
 
-      if (!response.ok) {
-        setNotice(body?.error ?? 'Could not generate a plan. Try again.');
-        return;
-      }
+        if (!response.ok) {
+          setNotice(body?.error ?? 'Could not generate a plan. Try again.');
+          return;
+        }
 
-      setLocal((prev) => ({
-        ...prev,
-        [active]: { plan: body.plan, source: body.source, createdAt: new Date().toISOString() },
-      }));
+        setLocal((prev) => ({
+          ...prev,
+          [type]: { plan: body.plan, source: body.source, createdAt: new Date().toISOString() },
+        }));
 
-      if (body.source === 'template') {
-        setNotice(body.reason ?? 'Showing the template plan.');
-        setViolations(Array.isArray(body.violations) ? body.violations : []);
+        if (body.source === 'template') {
+          setNotice(body.reason ?? 'Showing the template plan.');
+          setViolations(Array.isArray(body.violations) ? body.violations : []);
+        }
+      } catch {
+        setNotice('Connection dropped. Try again.');
+      } finally {
+        inFlight.current = false;
       }
     });
   }
@@ -80,6 +92,7 @@ export function PlanBoard({
             key={item.type}
             role="tab"
             aria-selected={active === item.type}
+            disabled={pending}
             onClick={() => {
               setActive(item.type);
               setNotice(null);
@@ -88,6 +101,7 @@ export function PlanBoard({
             className={cn(
               'bg-card py-3 text-xs font-medium uppercase tracking-wider transition-colors',
               active === item.type ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
+              'disabled:cursor-not-allowed disabled:opacity-60',
             )}
           >
             {item.label}
@@ -113,7 +127,27 @@ export function PlanBoard({
         </div>
       ) : null}
 
-      {current ? (
+      {pending ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="space-y-3 rounded-lg border border-border bg-card p-5"
+        >
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
+            Building your {tab.label.toLowerCase()} plan · {elapsed}s
+          </p>
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.min(95, (elapsed / 60) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Usually 20–60 s. Keep this screen open.
+          </p>
+        </div>
+      ) : current ? (
         <div className="space-y-3">
           <p className="label-xs">
             {current.source === 'ai' ? 'Generated' : 'Template'}
@@ -130,7 +164,9 @@ export function PlanBoard({
       <div className="space-y-2">
         <Button onClick={generate} disabled={pending || left <= 0} size="lg" className="w-full">
           {pending ? <Loader2 className="animate-spin" /> : <Sparkles />}
-          {current ? 'Regenerate' : 'Generate'} {tab.label.toLowerCase()} plan
+          {pending
+            ? 'Generating…'
+            : `${current ? 'Regenerate' : 'Generate'} ${tab.label.toLowerCase()} plan`}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
           {left > 0 ? `${left} left this week` : 'No generations left this week'}
@@ -138,4 +174,21 @@ export function PlanBoard({
       </div>
     </div>
   );
+}
+
+/** Seconds since `running` turned true; resets to 0 when it stops. */
+function useElapsedSeconds(running: boolean): number {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const started = Date.now();
+    const id = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => {
+      clearInterval(id);
+      setSeconds(0);
+    };
+  }, [running]);
+
+  return seconds;
 }
