@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
+import { parseDecimal } from '@/lib/decimal';
 import {
   deleteCustomTask,
   setModule,
@@ -149,7 +150,7 @@ function TaskRow({
     });
 
   function commitTarget() {
-    const next = Number(target);
+    const next = parseDecimal(target);
     if (!Number.isFinite(next) || next <= 0 || next === task.target) {
       setTarget(String(task.target));
       return;
@@ -184,14 +185,13 @@ function TaskRow({
         </span>
       ) : (
         <span className="flex w-24 shrink-0 items-center gap-1">
-          <Input
+          <DecimalInput
             value={target}
             onChange={(event) => setTarget(event.target.value)}
             onBlur={commitTarget}
             onKeyDown={(event) => {
               if (event.key === 'Enter') event.currentTarget.blur();
             }}
-            inputMode="decimal"
             aria-label={`${task.title} target`}
             className="h-8 px-2 text-right font-mono text-xs"
           />

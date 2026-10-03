@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { normalizeDecimal } from '@/lib/decimal';
 import { createClient } from '@/lib/supabase/server';
 import { effectiveModules } from '@/lib/goals';
 import { applyGoalPresetToTasks } from '@/lib/tasks/preset';
@@ -71,7 +72,10 @@ export async function setTaskActive(input: unknown): Promise<TaskResult> {
 
 const targetInput = z.object({
   taskId: z.string().uuid(),
-  target: z.coerce.number().positive('Target must be greater than 0.').max(1_000_000),
+  target: z.preprocess(
+    normalizeDecimal,
+    z.coerce.number({ message: 'Enter a target.' }).positive('Target must be greater than 0.').max(1_000_000),
+  ),
 });
 
 export async function setTaskTarget(input: unknown): Promise<TaskResult> {
@@ -99,7 +103,10 @@ const customTaskInput = z.object({
   title: z.string().trim().min(1, 'Give it a name.').max(60, 'Keep it under 60 characters.'),
   category: z.enum(CATEGORIES, { message: 'Pick a group.' }),
   unit: z.enum(UNITS, { message: 'Pick a unit.' }),
-  target: z.coerce.number().positive('Target must be greater than 0.').max(1_000_000),
+  target: z.preprocess(
+    normalizeDecimal,
+    z.coerce.number({ message: 'Enter a target.' }).positive('Target must be greater than 0.').max(1_000_000),
+  ),
 });
 
 export async function addCustomTask(_prev: TaskResult, formData: FormData): Promise<TaskResult> {

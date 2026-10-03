@@ -12,9 +12,11 @@ const local = !process.env.E2E_BASE_URL;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 90_000,
+  // Each onboarding test is ~30 Supabase round trips; leave room for a slow link.
+  timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: true,
+  workers: 2,
   retries: 0,
   reporter: [['list']],
   use: {

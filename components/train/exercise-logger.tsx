@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { ChevronDown, Info, Loader2, Repeat, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
+import { parseDecimal } from '@/lib/decimal';
 import { deleteSet, logSet, swapExercise } from '@/app/(app)/train/actions';
 
 export interface LoggerSet {
@@ -184,7 +185,7 @@ function SetRow({
   const [rpe, setRpe] = useState(row.rpe === null ? '' : String(row.rpe));
 
   function save() {
-    const repsValue = reps === '' ? null : Number(reps);
+    const repsValue = reps.trim() === '' ? null : parseDecimal(reps);
     if (repsValue === null || !Number.isFinite(repsValue)) return;
 
     call(() =>
@@ -193,9 +194,9 @@ function SetRow({
         exerciseId: exercise.id,
         setNo: row.setNo,
         reps: Math.round(repsValue),
-        weightKg: weight === '' ? null : Number(weight),
+        weightKg: weight.trim() === '' ? null : parseDecimal(weight),
         durationSec: null,
-        rpe: rpe === '' ? null : Number(rpe),
+        rpe: rpe.trim() === '' ? null : parseDecimal(rpe),
       }),
     );
   }
@@ -216,11 +217,11 @@ function SetRow({
 
       {exercise.isBodyweight ? (
         <>
-          <Input
+          <DecimalInput
             value={reps}
             onChange={(e) => setReps(e.target.value)}
             onBlur={save}
-            inputMode="numeric"
+            integer
             placeholder="reps"
             aria-label={`${exercise.name} set ${row.setNo} reps`}
             className="h-9 px-2 text-center font-mono text-sm"
@@ -229,20 +230,19 @@ function SetRow({
         </>
       ) : (
         <>
-          <Input
+          <DecimalInput
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             onBlur={save}
-            inputMode="decimal"
             placeholder="kg"
             aria-label={`${exercise.name} set ${row.setNo} weight`}
             className="h-9 px-2 text-center font-mono text-sm"
           />
-          <Input
+          <DecimalInput
             value={reps}
             onChange={(e) => setReps(e.target.value)}
             onBlur={save}
-            inputMode="numeric"
+            integer
             placeholder="reps"
             aria-label={`${exercise.name} set ${row.setNo} reps`}
             className="h-9 px-2 text-center font-mono text-sm"
@@ -250,11 +250,10 @@ function SetRow({
         </>
       )}
 
-      <Input
+      <DecimalInput
         value={rpe}
         onChange={(e) => setRpe(e.target.value)}
         onBlur={save}
-        inputMode="decimal"
         placeholder="-"
         aria-label={`${exercise.name} set ${row.setNo} RPE`}
         className="h-9 px-1 text-center font-mono text-xs"

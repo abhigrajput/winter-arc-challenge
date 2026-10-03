@@ -7,18 +7,16 @@ import { isStepComplete, type ProgressInput } from '@/lib/onboarding/progress';
 /**
  * Onboarding progress has two sources, and the furthest one wins.
  *
- * 1. Filled columns on profiles. Authoritative and device-independent, but
- *    blind to steps whose columns ship with a DB default — wake_time,
- *    sleep_target_h, budget and modules all arrive pre-populated from the
- *    signup trigger, so "still the default" is indistinguishable from "the
- *    user picked exactly that".
- * 2. A cookie recording the furthest step submitted. Covers the blind spot.
+ * 1. Filled columns on profiles. Blind to steps whose columns ship with a DB
+ *    default — wake_time, sleep_target_h, budget and modules all arrive
+ *    pre-populated from the signup trigger, so "still the default" is
+ *    indistinguishable from "the user picked exactly that".
+ * 2. profiles.onboarding_step: index of the furthest step submitted. Covers the
+ *    blind spot. Baseline also has profiles.skipped_baseline.
  *
- * Worst case (a different device, cleared cookies) the user is re-asked a step
- * they already answered, with their saved values pre-filled. Nothing is lost.
- *
- * The live schema has no onboarding_step column; adding one would let source 2
- * go away.
+ * Both are in the database, so a user can start on one device and finish on
+ * another. The old wa_onboarding cookie is still read (never written) so
+ * anyone midway through onboarding when this shipped keeps their place.
  */
 
 export const PROGRESS_COOKIE = 'wa_onboarding';
@@ -63,20 +61,24 @@ export async function loadOnboardingState(userId: string): Promise<OnboardingSta
 
   if (!profile) return null;
 
-  const reached = cookieStepIndex(cookieStore.get(PROGRESS_COOKIE)?.value, userId);
+  const reached = Math.max(
+    profile.onboarding_step ?? -1,
+    cookieStepIndex(cookieStore.get(PROGRESS_COOKIE)?.value, userId),
+  );
 
   const progress: ProgressInput = {
     profile,
     hasBaseline: Boolean(baseline),
+    skippedBaseline: Boolean(profile.skipped_baseline),
     // Picking zero add-on modules is a valid answer, so the array alone cannot
-    // confirm the step was seen — the cookie or a later step does.
+    // confirm the step was seen — onboarding_step or a later step does.
     modulesChosen:
       (profile.modules?.length ?? 0) > 0 ||
       Boolean(profile.training_mode) ||
       reached >= STEPS.indexOf('modules'),
   };
 
-  // Done = its columns are filled, or the cookie says it was already submitted.
+  // Done = its columns are filled, or onboarding_step says it was already submitted.
   const done = (step: Step) =>
     isStepComplete(step, progress) || reached >= STEPS.indexOf(step);
 

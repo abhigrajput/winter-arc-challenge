@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BarChart3, ClipboardCheck, ListChecks, LogOut, Sparkles } from 'lucide-react';
+import { BarChart3, ClipboardCheck, ListChecks, LogOut, Sparkles, Trophy } from 'lucide-react';
 import { AppNav } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
@@ -20,9 +20,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Winter Arc
           </Link>
           <div className="flex items-center gap-1">
-            <span className="mr-2 font-mono text-xs text-muted-foreground">
+            <span className="mr-2 hidden font-mono text-xs text-muted-foreground sm:inline">
               {profile?.username ?? email}
             </span>
+            <Button asChild variant="ghost" size="icon" aria-label="Leaderboard">
+              <Link href="/leaderboard">
+                <Trophy />
+              </Link>
+            </Button>
             <Button asChild variant="ghost" size="icon" aria-label="Stats">
               <Link href="/stats">
                 <BarChart3 />

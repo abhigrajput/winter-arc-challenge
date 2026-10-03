@@ -5,6 +5,8 @@ import { Check, Droplets, Loader2, Minus, Plus, Sparkles, Trash2, X } from 'luci
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
+import { parseDecimal } from '@/lib/decimal';
 import { Label } from '@/components/ui/label';
 import type { QuickFood } from '@/lib/nutrition/helpers';
 import type { MealEstimate } from '@/lib/ai/schemas';
@@ -160,7 +162,7 @@ function QuickAdd({
   const [protein, setProtein] = useState('');
 
   function submitCustom() {
-    const kcal = Number(calories);
+    const kcal = parseDecimal(calories);
     if (!description.trim() || !Number.isFinite(kcal) || kcal < 0) return;
 
     run(() =>
@@ -168,7 +170,7 @@ function QuickAdd({
         description: description.trim(),
         meal: null,
         calories: Math.round(kcal),
-        proteinG: protein === '' ? 0 : Number(protein),
+        proteinG: protein.trim() === '' ? 0 : parseDecimal(protein),
         carbsG: 0,
         fatG: 0,
         source: 'manual',
@@ -228,21 +230,19 @@ function QuickAdd({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="food-kcal">Calories</Label>
-              <Input
+              <DecimalInput
                 id="food-kcal"
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}
-                inputMode="numeric"
                 placeholder="450"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="food-protein">Protein (g)</Label>
-              <Input
+              <DecimalInput
                 id="food-protein"
                 value={protein}
                 onChange={(e) => setProtein(e.target.value)}
-                inputMode="decimal"
                 placeholder="20"
               />
             </div>

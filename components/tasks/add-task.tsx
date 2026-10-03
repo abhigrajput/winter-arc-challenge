@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DecimalInput } from '@/components/ui/decimal-input';
 import { Label } from '@/components/ui/label';
 import { addCustomTask, type TaskResult } from '@/app/(app)/tasks/actions';
 
@@ -85,14 +86,11 @@ export function AddTask() {
       ) : (
         <div className="space-y-2">
           <Label htmlFor="target">Daily target</Label>
-          <Input
+          <DecimalInput
             id="target"
             name="target"
-            type="number"
-            step="any"
-            min="0.01"
-            inputMode="decimal"
             defaultValue="1"
+            placeholder="2.5"
             required
           />
         </div>

@@ -166,6 +166,10 @@ export type ProfileRow = {
   challenge_start: string | null;
   is_public: boolean | null;
   onboarded: boolean | null;
+  /** Index into STEPS of the furthest onboarding step submitted. */
+  onboarding_step: number | null;
+  /** True when the user chose "Skip — measure later" on Baseline. */
+  skipped_baseline: boolean | null;
   created_at: string | null;
 };
 
@@ -266,6 +270,32 @@ export type WorkoutSetRow = {
 
 /** Convenience aliases for the tables the app writes most. */
 export type ProfileUpdate = Partial<ProfileRow>;
+
+/** public_profiles view: the only columns of a profile anyone else can read. */
+export type PublicProfileRow = {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  challenge_start: string | null;
+};
+
+/** get_leaderboard(p_days, p_limit): discipline only, public + onboarded users. */
+export type LeaderboardRow = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  points: number;
+  current_streak: number;
+};
+
+/** get_public_profile(username). */
+export type PublicProfileStats = {
+  today: string;
+  days: { date: string; completed: number; active: number }[];
+  achievements: string[];
+};
 export type BodyMeasurementUpsert = Partial<BodyMeasurementRow> &
   Pick<BodyMeasurementRow, 'user_id' | 'log_date'>;
 
@@ -393,8 +423,26 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Views: {
+      public_profiles: {
+        Row: PublicProfileRow;
+        Relationships: [];
+      };
+    };
+    Functions: {
+      get_leaderboard: {
+        Args: { p_days: number; p_limit: number };
+        Returns: LeaderboardRow[];
+      };
+      get_streak: {
+        Args: { p_user: string };
+        Returns: number;
+      };
+      get_public_profile: {
+        Args: { p_username: string };
+        Returns: PublicProfileStats | null;
+      };
+    };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
   };

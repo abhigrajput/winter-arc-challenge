@@ -164,3 +164,35 @@ test('requires hip for women and accepts it with a comma', async ({ page }) => {
   const rows = await measurementsOf(user.id);
   expect(rows[0]).toMatchObject({ waist_cm: 72, neck_cm: 32.5, hip_cm: 96.5 });
 });
+
+test('resumes on another device where the user left off', async ({ page, browser }) => {
+  user = await createTestUser(admin, 'resume');
+  await signIn(page, user);
+  await fillThroughRoutine(page, 'male');
+
+  // A brand-new browser context: no cookies, no local state. Progress must
+  // come from the database alone.
+  const other = await browser.newContext({ viewport: { width: 400, height: 860 } });
+  try {
+    const second = await other.newPage();
+    await second.goto('/login');
+    await second.locator('#email').fill(user.email);
+    await second.locator('#password').fill(user.password);
+    await second.getByRole('button', { name: 'Sign in' }).click();
+    await second.waitForURL(/\/onboarding/);
+    await second.goto('/onboarding');
+    await expect(second).toHaveURL(/\/onboarding\/baseline$/);
+
+    await second.getByRole('button', { name: 'Skip — measure later' }).click();
+    await second.waitForURL(/\/onboarding\/result$/);
+  } finally {
+    await other.close();
+  }
+
+  const { data } = await admin
+    .from('profiles')
+    .select('onboarding_step, skipped_baseline')
+    .eq('id', user.id)
+    .single();
+  expect(data).toEqual({ onboarding_step: 8, skipped_baseline: true });
+});

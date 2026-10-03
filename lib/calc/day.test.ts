@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CHALLENGE_DAYS,
   challengeDay,
+  challengeDayOn,
   isWritableLogDate,
   localDate,
   phaseForDay,
@@ -117,5 +118,21 @@ describe('phaseForDay', () => {
   it('treats day 0 as week 1', () => {
     expect(phaseForDay(0).week).toBe(1);
     expect(phaseForDay(0).name).toBe('Foundation');
+  });
+});
+
+describe('challengeDayOn', () => {
+  it('counts from a known local date', () => {
+    expect(challengeDayOn('2026-10-01', '2026-10-01')).toBe(1);
+    expect(challengeDayOn('2026-10-01', '2026-10-03')).toBe(3);
+  });
+
+  it('is 0 before the start and without a start', () => {
+    expect(challengeDayOn('2026-10-05', '2026-10-03')).toBe(0);
+    expect(challengeDayOn(null, '2026-10-03')).toBe(0);
+  });
+
+  it('caps at day 90', () => {
+    expect(challengeDayOn('2026-01-01', '2026-12-31')).toBe(90);
   });
 });

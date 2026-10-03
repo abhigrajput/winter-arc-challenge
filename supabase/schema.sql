@@ -71,10 +71,14 @@ create table if not exists profiles (
   created_at        timestamptz default now()
 );
 
--- Added by supabase/migrations/pre-phase-13.sql. Until then onboarding derives
--- the step from which fields are filled in (lib/onboarding/progress.ts).
+-- Onboarding progress, stored in the database so it resumes on any device.
+-- onboarding_step: index into STEPS (lib/onboarding/schema.ts) of the furthest
+-- step submitted (pre-phase-13.sql). skipped_baseline: "Skip — measure later"
+-- on the optional Baseline step (phase-13.sql).
 alter table profiles
   add column if not exists onboarding_step int;
+alter table profiles
+  add column if not exists skipped_baseline boolean not null default false;
 
 -- ---------------------------------------------------------------------------
 -- tasks + daily logs
@@ -570,7 +574,14 @@ create trigger on_auth_user_created after insert on auth.users
 --     Remaining AI calls for the current user against the §8.9 quotas.
 --
 --   get_streak(p_user uuid)
---     Current streak for one user.
+--     Current streak for one user. Since supabase/migrations/phase-13.sql this
+--     is a SECURITY DEFINER wrapper: 0 unless the caller is that user or the
+--     user is public and onboarded. The provisioned body lives on, untouched,
+--     as private.get_streak_unchecked (not exposed through PostgREST).
+--
+--   get_public_profile(p_username text)            -- phase-13.sql
+--     /u/[username] data: per-day completion counts and badge codes for a
+--     public, onboarded user; NULL otherwise. Never body data.
 --
 -- There is NO award_achievement RPC, and supabase/migrations/pre-phase-13.sql
 -- (1) drops it if one is ever added. Badges are written only by the service

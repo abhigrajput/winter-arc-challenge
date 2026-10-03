@@ -46,3 +46,77 @@ export async function deleteTestUser(admin: SupabaseClient, user: TestUser | und
   if (!user) return;
   await admin.auth.admin.deleteUser(user.id);
 }
+
+/** Body numbers seeded on every onboarded test user. Distinctive, so a leak is easy to spot. */
+export const SEEDED_BODY = { weight_kg: 83.7, target_weight_kg: 76.3, height_cm: 177.2, waist_cm: 91.4, neck_cm: 39.6 };
+
+/**
+ * A user who has finished onboarding (written directly, not through the UI),
+ * with a baseline measurement row. `isPublic` controls leaderboard visibility.
+ */
+export async function createOnboardedUser(
+  admin: SupabaseClient,
+  tag: string,
+  { isPublic = true }: { isPublic?: boolean } = {},
+): Promise<TestUser & { username: string }> {
+  const user = await createTestUser(admin, tag);
+  const username = `e2e${tag}${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 90 + 10)}`.slice(0, 20);
+  const { error } = await admin
+    .from('profiles')
+    .update({
+      username,
+      display_name: `E2E ${tag}`,
+      sex: 'male',
+      age: 27,
+      height_cm: SEEDED_BODY.height_cm,
+      weight_kg: SEEDED_BODY.weight_kg,
+      target_weight_kg: SEEDED_BODY.target_weight_kg,
+      activity_level: 1.55,
+      goal: 'fat_loss',
+      training_mode: 'home',
+      fitness_level: 'beginner',
+      days_per_week: 4,
+      session_minutes: 45,
+      diet_type: 'veg',
+      budget: 'hostel',
+      calorie_target: 2150,
+      protein_target_g: 150,
+      timezone: 'Asia/Kolkata',
+      is_public: isPublic,
+      onboarded: true,
+    })
+    .eq('id', user.id);
+  if (error) throw error;
+
+  const today = todayInKolkata();
+  const { error: bmError } = await admin.from('body_measurements').insert({
+    user_id: user.id,
+    log_date: today,
+    weight_kg: SEEDED_BODY.weight_kg,
+    waist_cm: SEEDED_BODY.waist_cm,
+    neck_cm: SEEDED_BODY.neck_cm,
+  });
+  if (bmError) throw bmError;
+
+  return { ...user, username };
+}
+
+/** Marks every active task done today, so the user has points and a 1-day streak. */
+export async function completeToday(admin: SupabaseClient, userId: string): Promise<number> {
+  const { data: tasks, error } = await admin
+    .from('user_tasks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('active', true);
+  if (error) throw error;
+  const today = todayInKolkata();
+  const { error: insertError } = await admin
+    .from('daily_logs')
+    .insert((tasks ?? []).map((t) => ({ user_id: userId, user_task_id: t.id, log_date: today, completed: true })));
+  if (insertError) throw insertError;
+  return tasks?.length ?? 0;
+}
+
+export function todayInKolkata(): string {
+  return new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+}

@@ -70,6 +70,11 @@ describe('isStepComplete', () => {
     expect(isStepComplete('baseline', { ...fresh, hasBaseline: true })).toBe(true);
   });
 
+  it('treats a skipped baseline as done, so resume moves on to the result', () => {
+    expect(isStepComplete('baseline', fresh)).toBe(false);
+    expect(isStepComplete('baseline', { ...fresh, skippedBaseline: true })).toBe(true);
+  });
+
   it('counts result only once onboarded is true', () => {
     expect(isStepComplete('result', fresh)).toBe(false);
     expect(isStepComplete('result', withProfile({ onboarded: true }))).toBe(true);

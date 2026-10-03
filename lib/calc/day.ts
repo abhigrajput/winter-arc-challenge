@@ -41,8 +41,15 @@ export function challengeDay(
   timezone: string,
   now: Date = new Date(),
 ): number {
+  return challengeDayOn(challengeStart, localDate(timezone, now));
+}
+
+/**
+ * Same, from an already-known local date. Used where the timezone itself is
+ * private (public profiles get the user's "today" from the database instead).
+ */
+export function challengeDayOn(challengeStart: string | null, today: string): number {
   if (!challengeStart) return 0;
-  const today = localDate(timezone, now);
   const elapsed = differenceInCalendarDays(parseISO(today), parseISO(challengeStart));
   if (elapsed < 0) return 0;
   return Math.min(elapsed + 1, CHALLENGE_DAYS);

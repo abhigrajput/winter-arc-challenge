@@ -8,3 +8,12 @@ export function normalizeDecimal(value: unknown): unknown {
   const trimmed = value.trim().replace(',', '.');
   return trimmed === '' ? undefined : trimmed;
 }
+
+/**
+ * Client-side twin of normalizeDecimal for controlled inputs: "2,5" → 2.5.
+ * Blank or unparseable → NaN, so callers keep their existing isFinite checks.
+ */
+export function parseDecimal(value: string): number {
+  const normalized = normalizeDecimal(value);
+  return typeof normalized === 'string' ? Number(normalized) : Number.NaN;
+}

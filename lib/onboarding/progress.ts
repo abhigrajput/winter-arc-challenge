@@ -2,9 +2,10 @@ import type { ProfileRow } from '@/lib/supabase/types';
 import { INPUT_STEPS, STEPS, type Step } from '@/lib/onboarding/schema';
 
 /**
- * The live profiles table has no onboarding_step column, so progress is derived
- * from which columns are filled. That keeps resume-where-you-left-off working
- * across devices without a second source of truth that can drift.
+ * Progress is derived from which columns are filled, plus
+ * profiles.onboarding_step for steps whose columns ship with a DB default
+ * (see lib/onboarding/state.ts). Both live in the database, so resume works
+ * across devices.
  *
  * Baseline measurements live in body_measurements, not profiles, so the caller
  * passes that separately.
@@ -36,6 +37,8 @@ export interface ProgressInput {
   > | null;
   /** True once a baseline row exists in body_measurements. */
   hasBaseline: boolean;
+  /** True when Baseline was skipped (profiles.skipped_baseline). */
+  skippedBaseline?: boolean;
   /** True once the user has passed the modules step, even by picking none. */
   modulesChosen: boolean;
 }
@@ -69,7 +72,8 @@ export function isStepComplete(step: Step, input: ProgressInput): boolean {
     case 'routine':
       return Boolean(p.wake_time && p.sleep_target_h);
     case 'baseline':
-      return input.hasBaseline;
+      // The step is optional: measured or explicitly skipped both count.
+      return input.hasBaseline || Boolean(input.skippedBaseline);
     case 'result':
       return Boolean(p.onboarded);
   }

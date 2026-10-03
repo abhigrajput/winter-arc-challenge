@@ -21,6 +21,7 @@ import {
   nextStep,
   routineSchema,
   scheduleSchema,
+  STEPS,
   trainingSchema,
   type Step,
 } from '@/lib/onboarding/schema';
@@ -30,8 +31,6 @@ export interface StepState {
   /** Field-level messages keyed by input name. */
   fieldErrors?: Record<string, string>;
 }
-
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 async function requireUserId(): Promise<string> {
   const supabase = await createClient();
@@ -53,24 +52,29 @@ function flatten(error: z.ZodError): Record<string, string> {
   return fieldErrors;
 }
 
-/** Records the furthest step submitted, so default-valued steps are not re-asked. */
-async function markReached(step: Step, userId: string): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(PROGRESS_COOKIE, `${userId}:${step}`, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: COOKIE_MAX_AGE,
-    path: '/',
-  });
+/**
+ * profiles.onboarding_step for this submission: the furthest step reached,
+ * never lowered when the user goes back and resubmits an earlier one.
+ */
+async function reachedPatch(step: Step, userId: string): Promise<ProfileUpdate> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('onboarding_step')
+    .eq('id', userId)
+    .maybeSingle();
+  return { onboarding_step: Math.max(data?.onboarding_step ?? -1, STEPS.indexOf(step)) };
 }
 
-/** Saves the step's columns, advances the cookie, then moves to the next step. */
+/** Saves the step's columns and progress in one write, then moves to the next step. */
 async function saveAndAdvance(step: Step, patch: ProfileUpdate): Promise<StepState> {
   const userId = await requireUserId();
   const supabase = await createClient();
 
-  const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
+  const { error } = await supabase
+    .from('profiles')
+    .update({ ...patch, ...(await reachedPatch(step, userId)) })
+    .eq('id', userId);
 
   if (error) {
     if (error.code === '23505') {
@@ -79,7 +83,6 @@ async function saveAndAdvance(step: Step, patch: ProfileUpdate): Promise<StepSta
     return { error: 'Could not save. Try again.' };
   }
 
-  await markReached(step, userId);
   revalidatePath('/onboarding', 'layout');
   redirect(`/onboarding/${nextStep(step)}`);
 }
@@ -152,19 +155,24 @@ export async function saveRoutine(_prev: StepState, formData: FormData): Promise
  * Baseline writes to body_measurements, not profiles, and also seeds the first
  * body-fat estimate so the result screen has something to show.
  *
- * The whole step is optional: "Skip — measure later" (intent=skip) writes
- * nothing and moves on. The progress cookie records that the step was passed.
+ * The whole step is optional: "Skip — measure later" (intent=skip) writes no
+ * measurements and sets profiles.skipped_baseline, so the skip holds on any device.
  */
 export async function saveBaseline(_prev: StepState, formData: FormData): Promise<StepState> {
   const userId = await requireUserId();
 
+  const supabase = await createClient();
+
   if (formData.get('intent') === 'skip') {
-    await markReached('baseline', userId);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ skipped_baseline: true, ...(await reachedPatch('baseline', userId)) })
+      .eq('id', userId);
+    if (error) return { error: 'Could not save. Try again.' };
+
     revalidatePath('/onboarding', 'layout');
     redirect('/onboarding/result');
   }
-
-  const supabase = await createClient();
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -210,7 +218,10 @@ export async function saveBaseline(_prev: StepState, formData: FormData): Promis
 
   if (error) return { error: 'Could not save your measurements. Try again.' };
 
-  await markReached('baseline', userId);
+  await supabase
+    .from('profiles')
+    .update({ skipped_baseline: false, ...(await reachedPatch('baseline', userId)) })
+    .eq('id', userId);
   revalidatePath('/onboarding', 'layout');
   redirect('/onboarding/result');
 }
