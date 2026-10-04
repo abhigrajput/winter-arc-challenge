@@ -3,7 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { publicEnv } from '@/lib/env';
 
 /** Routes reachable without a session. */
-const PUBLIC_PREFIXES = ['/login', '/auth', '/u/', '/leaderboard', '/manifest.webmanifest'];
+// /api/cron authenticates itself with CRON_SECRET; it never has a user session.
+const PUBLIC_PREFIXES = ['/login', '/auth', '/u/', '/leaderboard', '/manifest.webmanifest', '/api/cron/'];
 
 function isPublic(pathname: string): boolean {
   if (pathname === '/') return true;

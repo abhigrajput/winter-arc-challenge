@@ -188,7 +188,26 @@ export type PushSubscriptionRow = {
   endpoint: string;
   p256dh: string;
   auth: string;
+  /** Superseded by reminder_settings; kept for old rows. */
   reminders: Json | null;
+  created_at: string | null;
+  last_success_at: string | null;
+  user_agent: string | null;
+};
+
+export type ReminderSettingsRow = {
+  user_id: string;
+  /** Validated by lib/reminders/settings.ts parseReminderSettings. */
+  settings: Json;
+  updated_at: string | null;
+};
+
+export type ReminderLogRow = {
+  user_id: string;
+  /** Dedupe key: the reminder kind, or water_HH. */
+  kind: string;
+  local_date: string;
+  sent_at: string | null;
 };
 
 export type SkinLogRow = {
@@ -378,6 +397,18 @@ export type Database = {
         Row: PushSubscriptionRow;
         Insert: Partial<PushSubscriptionRow>;
         Update: Partial<PushSubscriptionRow>;
+        Relationships: [];
+      };
+      reminder_settings: {
+        Row: ReminderSettingsRow;
+        Insert: Partial<ReminderSettingsRow> & Pick<ReminderSettingsRow, 'user_id'>;
+        Update: Partial<ReminderSettingsRow>;
+        Relationships: [];
+      };
+      reminder_log: {
+        Row: ReminderLogRow;
+        Insert: Partial<ReminderLogRow> & Pick<ReminderLogRow, 'user_id' | 'kind' | 'local_date'>;
+        Update: Partial<ReminderLogRow>;
         Relationships: [];
       };
       skin_logs: {

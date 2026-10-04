@@ -409,7 +409,30 @@ create table if not exists push_subscriptions (
   endpoint  text not null unique,
   p256dh    text not null,
   auth      text not null,
-  reminders jsonb default '{}'::jsonb
+  reminders jsonb default '{}'::jsonb   -- superseded by reminder_settings
+);
+-- Phase 14 (supabase/migrations/phase-14.sql).
+alter table push_subscriptions
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists last_success_at timestamptz,
+  add column if not exists user_agent text;
+
+-- Per-user reminder toggles + times, validated by lib/reminders/settings.ts.
+create table if not exists reminder_settings (
+  user_id    uuid primary key references profiles (id) on delete cascade,
+  settings   jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Reminder dedupe: the cron claims (user, key, local date) before sending.
+-- Service role writes; users read their own rows. The pg_cron + pg_net
+-- schedule is in phase-14.sql (secrets live in Supabase Vault, not here).
+create table if not exists reminder_log (
+  user_id    uuid not null references profiles (id) on delete cascade,
+  kind       text not null,
+  local_date date not null,
+  sent_at    timestamptz not null default now(),
+  constraint reminder_log_unique unique (user_id, kind, local_date)
 );
 
 -- ---------------------------------------------------------------------------

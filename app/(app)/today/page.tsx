@@ -13,6 +13,7 @@ import { SleepCard, type SleepToday } from '@/components/today/sleep-card';
 import { ContentTracker, GitaTracker, type ContentPost } from '@/components/today/mind-trackers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
 
 export const metadata: Metadata = { title: 'Today' };
 
@@ -111,6 +112,8 @@ export default async function TodayPage() {
         points={stats.points.total}
         recovery={recovery.score}
       />
+
+      <InstallPrompt />
 
       <SleepCard today={sleepToday} recovery={recovery} />
 

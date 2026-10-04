@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { BarChart3, ClipboardCheck, ListChecks, LogOut, Sparkles, Trophy } from 'lucide-react';
+import { BarChart3, ClipboardCheck, ListChecks, Settings, Sparkles, Trophy } from 'lucide-react';
 import { AppNav } from '@/components/app-nav';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/profile';
-import { signOut } from '@/app/(auth)/login/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, email } = await requireUser();
@@ -48,11 +47,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <ListChecks />
               </Link>
             </Button>
-            <form action={signOut}>
-              <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
-                <LogOut />
-              </Button>
-            </form>
+            <Button asChild variant="ghost" size="icon" aria-label="Settings">
+              <Link href="/settings">
+                <Settings />
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
