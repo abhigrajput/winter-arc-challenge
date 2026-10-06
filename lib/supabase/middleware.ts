@@ -4,7 +4,7 @@ import { publicEnv } from '@/lib/env';
 
 /** Routes reachable without a session. */
 // /api/cron authenticates itself with CRON_SECRET; it never has a user session.
-const PUBLIC_PREFIXES = ['/login', '/auth', '/u/', '/leaderboard', '/manifest.webmanifest', '/api/cron/'];
+const PUBLIC_PREFIXES = ['/login', '/auth', '/u/', '/leaderboard', '/manifest.webmanifest', '/robots.txt', '/api/cron/'];
 
 function isPublic(pathname: string): boolean {
   if (pathname === '/') return true;
@@ -56,7 +56,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === '/login') {
+  // Signed-in users skip the landing page and the login screen.
+  if (user && (pathname === '/' || pathname === '/login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/today';
     url.search = '';

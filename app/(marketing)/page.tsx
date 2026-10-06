@@ -1,46 +1,71 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { createClient } from '@supabase/supabase-js';
+import { publicEnv } from '@/lib/env';
+import type { Database } from '@/lib/supabase/types';
+import { Hero } from '@/components/landing/hero';
+import { DaysSection, FinalCta, HowItWorks, ModuleCards, StatsStrip, type TopUser } from '@/components/landing/sections';
 
-const PILLARS = [
-  ['Body', 'Gym or home. Logged sets, real progression.'],
-  ['Abs', 'Body fat down. Core trained. No shortcuts sold.'],
-  ['Face', 'Skin routine, jawline, sleep, water.'],
-  ['Nutrition', 'Calories, protein, water. Indian food defaults.'],
-  ['Mind', 'Reading, meditation, Gita, skill.'],
-  ['Work', 'Ship content. Track output.'],
-];
+export const metadata: Metadata = {
+  title: { absolute: 'Winter Arc — 90 days. No excuses.' },
+  description: 'Body. Mind. Discipline. Tracked. A 90-day transformation app: workouts, nutrition, skin, sleep, mind, and a leaderboard that ranks discipline only.',
+};
 
-export default function MarketingPage() {
+/**
+ * Static and cached: rebuilt at most every 5 minutes for the live top 3.
+ * Signed-in visitors never see it — proxy.ts sends them to /today.
+ */
+export const revalidate = 300;
+
+async function topThree(): Promise<TopUser[]> {
+  try {
+    // Cookie-less anon client: a public RPC, so the page stays cacheable.
+    const supabase = createClient<Database>(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
+      auth: { persistSession: false },
+    });
+    const { data } = await supabase.rpc('get_leaderboard', { p_days: 3650, p_limit: 3 });
+    return (data ?? []).slice(0, 3).map((row) => ({
+      username: row.username,
+      displayName: row.display_name,
+      points: row.points,
+      streak: row.current_streak,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function LandingPage() {
+  const top = await topThree();
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center gap-12 px-6 py-16">
-      <div className="space-y-5">
-        <p className="label-xs">90 days</p>
-        <h1 className="text-5xl font-semibold tracking-tight sm:text-6xl">Winter Arc</h1>
-        <p className="max-w-lg text-lg text-muted-foreground">
-          One app for the whole transformation. Daily checklist, workout logger, macros,
-          measurements, photos, AI coach. Discipline is the only thing ranked.
-        </p>
-      </div>
-
-      <ul className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-        {PILLARS.map(([title, body]) => (
-          <li key={title} className="bg-card p-5">
-            <p className="text-sm font-semibold">{title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{body}</p>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Button asChild size="lg" className="sm:w-40">
-          <Link href="/login">Start Day 1</Link>
-        </Button>
-        <Button asChild variant="outline" size="lg" className="sm:w-40">
-          <Link href="/leaderboard">Leaderboard</Link>
-        </Button>
-      </div>
-
-      <p className="text-xs text-muted-foreground">General guidance, not medical advice.</p>
-    </main>
+    <>
+      <main className="overflow-x-clip bg-background">
+        <Hero />
+        {/*
+          Each section is its own Suspense boundary so React hydrates it as a
+          separate unit and yields to the main thread in between: no single
+          long hydration task, so taps on the hero CTA are never held up.
+        */}
+        <Suspense fallback={null}>
+          <DaysSection />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ModuleCards />
+        </Suspense>
+        <Suspense fallback={null}>
+          <StatsStrip top={top} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <HowItWorks />
+        </Suspense>
+        <Suspense fallback={null}>
+          <FinalCta />
+        </Suspense>
+        <footer className="border-t border-border px-4 py-8 text-center text-xs text-muted-foreground">
+          General guidance, not medical advice.
+        </footer>
+      </main>
+    </>
   );
 }

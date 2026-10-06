@@ -64,3 +64,84 @@
     @apply text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Landing fallback snow (no WebGL / reduced motion / low-end devices).
+   Tiled radial-gradient dots on layers one tile taller than the viewport,
+   sliding down exactly one tile per loop with transform only: compositor
+   work, no repaints, small layers, seamless. Static under reduced motion.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .wa-snow {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-repeat: repeat;
+    will-change: transform;
+  }
+  .wa-snow-far {
+    top: -180px;
+    background-image:
+      radial-gradient(1px 1px at 20px 30px, rgb(220 240 255 / 0.5), transparent 60%),
+      radial-gradient(1px 1px at 90px 120px, rgb(220 240 255 / 0.4), transparent 60%),
+      radial-gradient(1px 1px at 150px 60px, rgb(220 240 255 / 0.45), transparent 60%);
+    background-size: 180px 180px;
+    animation: wa-snow-far 6.5s linear infinite;
+  }
+  .wa-snow-mid {
+    top: -260px;
+    background-image:
+      radial-gradient(1.5px 1.5px at 40px 80px, rgb(230 246 255 / 0.65), transparent 60%),
+      radial-gradient(1.5px 1.5px at 160px 20px, rgb(230 246 255 / 0.55), transparent 60%),
+      radial-gradient(1.5px 1.5px at 230px 170px, rgb(230 246 255 / 0.6), transparent 60%);
+    background-size: 260px 260px;
+    animation: wa-snow-mid 6s linear infinite;
+  }
+  .wa-snow-near {
+    top: -340px;
+    background-image:
+      radial-gradient(2.5px 2.5px at 60px 50px, rgb(240 250 255 / 0.8), transparent 60%),
+      radial-gradient(2px 2px at 250px 210px, rgb(240 250 255 / 0.7), transparent 60%);
+    background-size: 340px 340px;
+    animation: wa-snow-near 5s linear infinite;
+  }
+}
+
+/* One tile of travel per loop: far 28 px/s, mid 43 px/s, near 68 px/s. */
+@keyframes wa-snow-far {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 180px, 0); }
+}
+@keyframes wa-snow-mid {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 260px, 0); }
+}
+@keyframes wa-snow-near {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 340px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-snow { animation: none !important; will-change: auto; }
+}
+
+/* ---------------------------------------------------------------------------
+   Landing scroll reveals: CSS scroll-driven animations, no JavaScript.
+   Where animation-timeline is unsupported, or under reduced motion, the
+   content is simply visible.
+   --------------------------------------------------------------------------- */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .wa-reveal {
+      animation: wa-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+
+@keyframes wa-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}

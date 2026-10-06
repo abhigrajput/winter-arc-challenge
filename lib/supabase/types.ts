@@ -202,6 +202,13 @@ export type ReminderSettingsRow = {
   updated_at: string | null;
 };
 
+export type SignupAttemptRow = {
+  id: number;
+  /** HMAC-SHA256 of the client IP; never the IP itself. */
+  ip_hash: string;
+  created_at: string | null;
+};
+
 export type ReminderLogRow = {
   user_id: string;
   /** Dedupe key: the reminder kind, or water_HH. */
@@ -403,6 +410,12 @@ export type Database = {
         Row: ReminderSettingsRow;
         Insert: Partial<ReminderSettingsRow> & Pick<ReminderSettingsRow, 'user_id'>;
         Update: Partial<ReminderSettingsRow>;
+        Relationships: [];
+      };
+      signup_attempts: {
+        Row: SignupAttemptRow;
+        Insert: Partial<SignupAttemptRow> & Pick<SignupAttemptRow, 'ip_hash'>;
+        Update: Partial<SignupAttemptRow>;
         Relationships: [];
       };
       reminder_log: {

@@ -16,8 +16,8 @@ test.afterEach(async () => {
 
 async function signIn(page: Page, u: TestUser): Promise<void> {
   await page.goto('/login');
-  await page.locator('#email').fill(u.email);
-  await page.locator('#password').fill(u.password);
+  await page.locator('#signin-email').fill(u.email);
+  await page.locator('#signin-password').fill(u.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/\/onboarding\/identity/);
 }
@@ -176,8 +176,8 @@ test('resumes on another device where the user left off', async ({ page, browser
   try {
     const second = await other.newPage();
     await second.goto('/login');
-    await second.locator('#email').fill(user.email);
-    await second.locator('#password').fill(user.password);
+    await second.locator('#signin-email').fill(user.email);
+    await second.locator('#signin-password').fill(user.password);
     await second.getByRole('button', { name: 'Sign in' }).click();
     await second.waitForURL(/\/onboarding/);
     await second.goto('/onboarding');
