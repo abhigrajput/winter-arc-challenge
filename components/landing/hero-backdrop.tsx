@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProgressSource } from '@/components/landing/scroll-progress';
 import { cn } from '@/lib/utils';
@@ -11,23 +11,37 @@ import { SvgArc } from '@/components/landing/svg-arc';
 /**
  * The hero background. The static gradient + CSS snow + SVG arc render on the
  * server, so the page is complete before any JavaScript runs. On capable
- * devices the WebGL scene is fetched on first interaction, or a few seconds
- * after load once the main thread is idle, then fades in over the fallback.
+ * devices the WebGL scene is fetched on first interaction (or after a quiet
+ * spell with none), then fades in over the fallback.
  */
 
 const ArcScene = dynamic(() => import('@/components/landing/arc-scene'), { ssr: false });
 
-function webglAvailable(): boolean {
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
-  } catch {
-    return false;
+/**
+ * If the scene cannot start (no WebGL, lost context, driver bug), keep the
+ * static fallback instead of breaking the page. This replaces a separate
+ * WebGL probe: creating a throwaway context costs ~100 ms of main thread,
+ * and the scene creates its own anyway.
+ */
+class SceneBoundary extends Component<{ children: ReactNode; onFail: () => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onFail();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
   }
 }
 
-/** Quiet time after load before the 3D bundle is fetched without any interaction. */
-const IDLE_DELAY_MS = 3500;
+/**
+ * Quiet time after load before the 3D bundle is fetched with no interaction.
+ * Any touch, scroll, mouse move or key loads it straight away; this only
+ * covers a visitor who lands and does nothing.
+ */
+const IDLE_DELAY_MS = 7000;
 const INTERACTIONS = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
 
 /**
@@ -90,12 +104,10 @@ export function HeroBackdrop({
       deviceMemory: nav.deviceMemory,
       saveData: nav.connection?.saveData,
     };
-    // Cheap checks now; assume WebGL until probed.
+    // WebGL itself is not probed: the scene creates the context, and
+    // SceneBoundary falls back if that fails.
     if (heroMode({ ...traits, webgl: true }) !== '3d') return;
     return whenEngagedOrIdle(() => {
-      // Creating a WebGL context is expensive (GPU process start-up), so the
-      // probe runs here, deferred, never during hydration.
-      if (heroMode({ ...traits, webgl: webglAvailable() }) !== '3d') return;
       setSnow(snowCount(window.innerWidth));
       setLoad3d(true);
     });
@@ -118,12 +130,19 @@ export function HeroBackdrop({
 
       {load3d ? (
         <div className={cn('absolute inset-0 opacity-0 transition-opacity duration-1000', ready && 'opacity-100')}>
-          <ArcScene
-            progress={progress}
-            active={heroVisible && tabVisible}
-            snow={snow}
-            onReady={() => setReady(true)}
-          />
+          <SceneBoundary
+            onFail={() => {
+              setReady(false);
+              setLoad3d(false);
+            }}
+          >
+            <ArcScene
+              progress={progress}
+              active={heroVisible && tabVisible}
+              snow={snow}
+              onReady={() => setReady(true)}
+            />
+          </SceneBoundary>
         </div>
       ) : null}
     </div>
