@@ -37,6 +37,22 @@ export function heroMode(traits: DeviceTraits): HeroMode {
   return '3d';
 }
 
+/**
+ * When the 3D scene may load, by device:
+ * - 'interaction': phones/tablets (coarse pointer or narrow viewport) load it
+ *   only on the first touch, scroll or key. Their CPUs pay most for parsing
+ *   three.js, and an idle load would land while the page is still settling.
+ * - 'interaction-or-idle': desktops also load it once the headline has
+ *   painted and the browser is idle (see hero-backdrop.tsx).
+ */
+export type LoadTrigger = 'interaction' | 'interaction-or-idle';
+
+export const MOBILE_MAX_WIDTH = 768;
+
+export function loadTrigger({ coarsePointer, viewportWidth }: { coarsePointer: boolean; viewportWidth: number }): LoadTrigger {
+  return coarsePointer || viewportWidth < MOBILE_MAX_WIDTH ? 'interaction' : 'interaction-or-idle';
+}
+
 /** Snow particle count: ~1500 on desktop, ~500 on phones. */
 export function snowCount(viewportWidth: number): number {
   return viewportWidth < 768 ? 500 : 1500;

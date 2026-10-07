@@ -4,15 +4,15 @@ import { Component, useEffect, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProgressSource } from '@/components/landing/scroll-progress';
 import { cn } from '@/lib/utils';
-import { heroMode, snowCount } from '@/lib/landing/capability';
+import { heroMode, loadTrigger, snowCount, type LoadTrigger } from '@/lib/landing/capability';
 import { CssSnow } from '@/components/landing/css-snow';
 import { SvgArc } from '@/components/landing/svg-arc';
 
 /**
  * The hero background. The static gradient + CSS snow + SVG arc render on the
  * server, so the page is complete before any JavaScript runs. On capable
- * devices the WebGL scene is fetched on first interaction or at the first
- * idle period after load, then fades in over the fallback.
+ * devices the WebGL scene is fetched on first interaction (phones), or on
+ * interaction or idle after the headline paints (desktop), then fades in.
  */
 
 const ArcScene = dynamic(() => import('@/components/landing/arc-scene'), { ssr: false });
@@ -36,20 +36,20 @@ class SceneBoundary extends Component<{ children: ReactNode; onFail: () => void 
   }
 }
 
-/**
- * With no interaction, the 3D bundle loads at the first idle period after the
- * page has loaded, or after this many ms at the latest.
- */
-const IDLE_TIMEOUT_MS = 2000;
+/** Desktop idle path: wait this long after the headline's LCP… */
+const IDLE_DELAY_AFTER_LCP_MS = 1500;
+/** …then load at the next idle period, or after this at the latest. */
+const IDLE_TIMEOUT_MS = 4000;
 const INTERACTIONS = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
 
 /**
- * Runs `run` once: on the first interaction, or at the first idle period after
- * the headline has painted and the page has loaded (requestIdleCallback,
- * timeout IDLE_TIMEOUT_MS) — whichever comes first. Never during hydration,
- * and the 3D bytes never compete with the LCP paint.
+ * Runs `run` once, on the first interaction. With trigger
+ * 'interaction-or-idle' (desktop) it may also run without one: after load and
+ * the headline's LCP, wait IDLE_DELAY_AFTER_LCP_MS, then requestIdleCallback
+ * (timeout IDLE_TIMEOUT_MS). Never during hydration, and the 3D bytes never
+ * compete with the LCP paint.
  */
-function whenEngagedOrIdle(run: () => void): () => void {
+function whenEngagedOrIdle(trigger: LoadTrigger, run: () => void): () => void {
   let done = false;
   let timer: number | undefined;
   let idleId: number | undefined;
@@ -63,12 +63,15 @@ function whenEngagedOrIdle(run: () => void): () => void {
   };
   const scheduleIdle = () => {
     if (done || idleId !== undefined || timer !== undefined) return;
-    if (typeof window.requestIdleCallback === 'function') {
-      idleId = window.requestIdleCallback(fire, { timeout: IDLE_TIMEOUT_MS });
-    } else {
-      // Safari has no requestIdleCallback: approximate "after load, soon".
-      timer = window.setTimeout(fire, IDLE_TIMEOUT_MS);
-    }
+    timer = window.setTimeout(() => {
+      if (done) return;
+      if (typeof window.requestIdleCallback === 'function') {
+        idleId = window.requestIdleCallback(fire, { timeout: IDLE_TIMEOUT_MS });
+      } else {
+        // Safari has no requestIdleCallback: the delay above has to do.
+        fire();
+      }
+    }, IDLE_DELAY_AFTER_LCP_MS);
   };
   const onLoad = () => {
     // Wait for the hero headline's LCP before going idle-hunting.
@@ -94,8 +97,10 @@ function whenEngagedOrIdle(run: () => void): () => void {
   }
 
   for (const type of INTERACTIONS) window.addEventListener(type, fire, { once: true, passive: true });
-  if (document.readyState === 'complete') onLoad();
-  else window.addEventListener('load', onLoad, { once: true });
+  if (trigger === 'interaction-or-idle') {
+    if (document.readyState === 'complete') onLoad();
+    else window.addEventListener('load', onLoad, { once: true });
+  }
 
   return () => {
     done = true;
@@ -126,7 +131,11 @@ export function HeroBackdrop({
     // WebGL itself is not probed: the scene creates the context, and
     // SceneBoundary falls back if that fails.
     if (heroMode({ ...traits, webgl: true }) !== '3d') return;
-    return whenEngagedOrIdle(() => {
+    const trigger = loadTrigger({
+      coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+      viewportWidth: window.innerWidth,
+    });
+    return whenEngagedOrIdle(trigger, () => {
       setSnow(snowCount(window.innerWidth));
       setLoad3d(true);
     });

@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { arcDay, heroMode, isLowEnd, scrollProgress, snowCount } from './capability';
+import { arcDay, heroMode, isLowEnd, loadTrigger, scrollProgress, snowCount } from './capability';
+
+describe('loadTrigger', () => {
+  it('phones and touch devices load 3D on interaction only', () => {
+    expect(loadTrigger({ coarsePointer: true, viewportWidth: 1024 })).toBe('interaction');
+    expect(loadTrigger({ coarsePointer: false, viewportWidth: 412 })).toBe('interaction');
+    expect(loadTrigger({ coarsePointer: false, viewportWidth: 767 })).toBe('interaction');
+  });
+
+  it('desktops may also load it when idle', () => {
+    expect(loadTrigger({ coarsePointer: false, viewportWidth: 768 })).toBe('interaction-or-idle');
+    expect(loadTrigger({ coarsePointer: false, viewportWidth: 1440 })).toBe('interaction-or-idle');
+  });
+});
 
 describe('scrollProgress', () => {
   // A 2000px section with an 800px viewport has 1200px of travel.
