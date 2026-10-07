@@ -75,7 +75,8 @@ export function Hero() {
             </Link>
           </div>
 
-          <p className="font-mono text-xs text-muted-foreground">
+          {/* Sans, not mono: nothing above the fold should need a second font before first paint. */}
+          <p className="text-xs tabular-nums tracking-wider text-muted-foreground">
             Day{' '}
             <span ref={dayLabel} className="tabular-nums text-foreground" data-testid="hero-day">
               00

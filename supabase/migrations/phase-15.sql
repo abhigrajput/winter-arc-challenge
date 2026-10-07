@@ -3,7 +3,7 @@
 -- Run in the Supabase SQL editor. Idempotent.
 --
 -- Email confirmation is off, so an account is live the moment it is created.
--- The /login signup action allows at most 5 signups per IP per hour, counted
+-- The /login signup action allows at most 30 signups per IP per hour, counted
 -- here. Serverless instances share nothing in memory, so the count lives in
 -- the database. The IP is never stored: only an HMAC-SHA256 of it, keyed with
 -- a server-only secret (lib/auth/rate-limit.ts).

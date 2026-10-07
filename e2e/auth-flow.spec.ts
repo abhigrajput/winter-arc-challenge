@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { adminClient, deleteTestUser, type TestUser } from './support';
+import { SIGNUP_LIMIT } from '../lib/auth/rate-limit';
 
 /**
  * Instant signup (email confirmation is off): create account → onboarding
@@ -168,22 +169,23 @@ test('honeypot: a filled hidden field creates nothing', async ({ page }) => {
   expect(data.users.some((x) => x.email === u.email)).toBe(false);
 });
 
-test('at most 5 signups per IP per hour', async ({ page }) => {
+test(`at most ${SIGNUP_LIMIT} signups per IP per hour`, async ({ page }) => {
+  test.slow();
   // Re-using a registered email: attempts count, but no accounts are created.
   const existing = newUser('limit');
   created.push(existing);
   await admin.auth.admin.createUser({ email: existing.email, password: existing.password, email_confirm: true });
 
   await openSignup(page);
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < SIGNUP_LIMIT; i += 1) {
     await fillSignup(page, { ...existing, name: `Try ${i}` });
     await submitSignup(page);
     await expect(page.getByText('Email already registered')).toBeVisible();
   }
   const { count } = await admin.from('signup_attempts').select('id', { count: 'exact', head: true }).gt('id', lastAttemptId);
-  expect(count).toBe(5);
+  expect(count).toBe(SIGNUP_LIMIT);
 
-  await fillSignup(page, { ...existing, name: 'Try 6' });
+  await fillSignup(page, { ...existing, name: 'One too many' });
   await submitSignup(page);
   await expect(page.getByText('Too many accounts from this network. Try again in an hour.')).toBeVisible();
 });

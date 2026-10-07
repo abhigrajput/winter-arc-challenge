@@ -58,7 +58,7 @@ describe('rate limit helpers', () => {
     expect(hashIp('203.0.113.7', 's2')).not.toBe(a);
   });
 
-  it('allows 5 per hour, blocks the 6th', () => {
+  it('allows 30 per hour, blocks the 31st', () => {
     expect(overLimit(SIGNUP_LIMIT - 1)).toBe(false);
     expect(overLimit(SIGNUP_LIMIT)).toBe(true);
     expect(windowStart(new Date('2026-10-06T12:00:00Z'))).toBe('2026-10-06T11:00:00.000Z');

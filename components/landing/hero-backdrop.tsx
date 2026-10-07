@@ -11,8 +11,8 @@ import { SvgArc } from '@/components/landing/svg-arc';
 /**
  * The hero background. The static gradient + CSS snow + SVG arc render on the
  * server, so the page is complete before any JavaScript runs. On capable
- * devices the WebGL scene is fetched on first interaction (or after a quiet
- * spell with none), then fades in over the fallback.
+ * devices the WebGL scene is fetched on first interaction or at the first
+ * idle period after load, then fades in over the fallback.
  */
 
 const ArcScene = dynamic(() => import('@/components/landing/arc-scene'), { ssr: false });
@@ -37,23 +37,23 @@ class SceneBoundary extends Component<{ children: ReactNode; onFail: () => void 
 }
 
 /**
- * Quiet time after load before the 3D bundle is fetched with no interaction.
- * Any touch, scroll, mouse move or key loads it straight away; this only
- * covers a visitor who lands and does nothing.
+ * With no interaction, the 3D bundle loads at the first idle period after the
+ * page has loaded, or after this many ms at the latest.
  */
-const IDLE_DELAY_MS = 7000;
+const IDLE_TIMEOUT_MS = 2000;
 const INTERACTIONS = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'scroll', 'keydown'] as const;
 
 /**
- * Runs `run` once: on the first interaction, or IDLE_DELAY_MS after the page
- * has loaded and the main thread is idle — whichever comes first. Parsing
- * three.js is ~1 s of main-thread work on a mid-range phone; doing it while
- * the page is still settling would block taps on the CTA.
+ * Runs `run` once: on the first interaction, or at the first idle period after
+ * the headline has painted and the page has loaded (requestIdleCallback,
+ * timeout IDLE_TIMEOUT_MS) — whichever comes first. Never during hydration,
+ * and the 3D bytes never compete with the LCP paint.
  */
 function whenEngagedOrIdle(run: () => void): () => void {
   let done = false;
   let timer: number | undefined;
   let idleId: number | undefined;
+  let lcpObserver: PerformanceObserver | undefined;
 
   const fire = () => {
     if (done) return;
@@ -61,15 +61,34 @@ function whenEngagedOrIdle(run: () => void): () => void {
     cleanup();
     run();
   };
+  const scheduleIdle = () => {
+    if (done || idleId !== undefined || timer !== undefined) return;
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(fire, { timeout: IDLE_TIMEOUT_MS });
+    } else {
+      // Safari has no requestIdleCallback: approximate "after load, soon".
+      timer = window.setTimeout(fire, IDLE_TIMEOUT_MS);
+    }
+  };
   const onLoad = () => {
-    timer = window.setTimeout(() => {
-      const ric = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
-      idleId = ric(fire, { timeout: 2000 } as IdleRequestOptions);
-    }, IDLE_DELAY_MS);
+    // Wait for the hero headline's LCP before going idle-hunting.
+    const supportsLcp =
+      typeof PerformanceObserver !== 'undefined' &&
+      PerformanceObserver.supportedEntryTypes?.includes('largest-contentful-paint');
+    if (!supportsLcp) {
+      scheduleIdle();
+      return;
+    }
+    lcpObserver = new PerformanceObserver(() => {
+      lcpObserver?.disconnect();
+      scheduleIdle();
+    });
+    lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
   };
   function cleanup() {
     for (const type of INTERACTIONS) window.removeEventListener(type, fire);
     window.removeEventListener('load', onLoad);
+    lcpObserver?.disconnect();
     if (timer !== undefined) window.clearTimeout(timer);
     if (idleId !== undefined) window.cancelIdleCallback?.(idleId);
   }

@@ -145,3 +145,13 @@
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Landing: below-the-fold sections skip layout and paint until they near the
+   viewport. Keeps first paint (the hero headline) cheap and stops their fonts
+   (JetBrains Mono) being fetched before it. `auto` remembers real sizes.
+   --------------------------------------------------------------------------- */
+.wa-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}

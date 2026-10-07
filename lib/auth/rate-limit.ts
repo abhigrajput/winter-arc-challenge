@@ -1,11 +1,12 @@
 import { createHmac } from 'node:crypto';
 
 /**
- * Signup abuse guard: at most SIGNUP_LIMIT signups per IP per window.
+ * Signup abuse guard: at most SIGNUP_LIMIT (30) signups per IP per hour.
  * Pure helpers here; the action does the database count (signup_attempts).
  */
 
-export const SIGNUP_LIMIT = 5;
+/** Generous on purpose: hostel and campus NAT puts many real users behind one IP. */
+export const SIGNUP_LIMIT = 30;
 export const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
 
 /**

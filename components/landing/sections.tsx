@@ -24,7 +24,7 @@ function SectionHeading({ id, eyebrow, title }: { id: string; eyebrow: string; t
 
 export function DaysSection() {
   return (
-    <section aria-labelledby="days-heading" className="mx-auto max-w-5xl px-4 py-24 sm:py-32">
+    <section aria-labelledby="days-heading" className="wa-deferred mx-auto max-w-5xl px-4 py-24 sm:py-32">
       <SectionHeading id="days-heading" eyebrow="The arc" title="Four phases. Thirteen weeks." />
       <DayCounterLazy />
     </section>
@@ -44,7 +44,7 @@ const MODULES = [
 
 export function ModuleCards() {
   return (
-    <section aria-labelledby="modules-heading" className="mx-auto max-w-5xl px-4 py-24 sm:py-32">
+    <section aria-labelledby="modules-heading" className="wa-deferred mx-auto max-w-5xl px-4 py-24 sm:py-32">
       <SectionHeading id="modules-heading" eyebrow="One app" title="Everything the 90 days touch." />
       <ul className="mt-12 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
         {MODULES.map(({ icon: Icon, title, copy }) => (
@@ -70,7 +70,7 @@ export interface TopUser {
 
 export function StatsStrip({ top }: { top: TopUser[] }) {
   return (
-    <section aria-labelledby="stats-heading" className="border-y border-border bg-card/40">
+    <section aria-labelledby="stats-heading" className="wa-deferred border-y border-border bg-card/40">
       <div className="mx-auto max-w-5xl px-4 py-12">
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
           <div>
@@ -119,7 +119,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section aria-labelledby="how-heading" className="mx-auto max-w-5xl px-4 py-24 sm:py-32">
+    <section aria-labelledby="how-heading" className="wa-deferred mx-auto max-w-5xl px-4 py-24 sm:py-32">
       <SectionHeading id="how-heading" eyebrow="How it works" title="Four steps. Then ninety days." />
       <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map(([title, copy], i) => (
@@ -136,7 +136,7 @@ export function HowItWorks() {
 
 export function FinalCta() {
   return (
-    <section aria-labelledby="final-heading" className="relative overflow-hidden px-4 py-28 sm:py-36">
+    <section aria-labelledby="final-heading" className="wa-deferred relative overflow-hidden px-4 py-28 sm:py-36">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,hsl(199_89%_55%/0.12),transparent_60%)]" />
       <div className="wa-reveal relative mx-auto flex max-w-xl flex-col items-center gap-8 text-center">
         <div className="relative w-56 sm:w-64">
