@@ -20,6 +20,8 @@ test('privacy and terms are public and linked from signup and the landing footer
   await expect(page.getByRole('heading', { name: 'Privacy policy' })).toBeVisible();
   await expect(page.getByText('Never sent to DeepSeek:')).toBeVisible();
   await expect(page.getByText(/photos, your username, your name, your email/)).toBeVisible();
+  await expect(page.getByTestId('grievance-officer')).toContainText('abhigrajput05@gmail.com');
+  await expect(page.getByText('Data Protection Board of India')).toBeVisible();
 
   await page.goto('/terms');
   await expect(page.getByRole('heading', { name: 'Terms of use' })).toBeVisible();

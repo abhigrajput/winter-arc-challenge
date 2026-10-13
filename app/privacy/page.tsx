@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ContactLine, LegalPage, Section } from '@/components/legal/legal-page';
+import { ContactLine, GrievanceOfficer, LegalPage, Section } from '@/components/legal/legal-page';
 
 export const metadata: Metadata = {
   title: 'Privacy policy',
@@ -63,6 +63,19 @@ export default function PrivacyPage() {
           </li>
           <li><strong className="text-foreground">Correct:</strong> edit your profile, targets and logs in the app.</li>
         </ul>
+      </Section>
+
+      <Section title="Grievances (India)">
+        <p>
+          Under the Digital Personal Data Protection Act, 2023 you can ask for a summary of the data we hold about you,
+          have it corrected or erased, nominate someone to exercise these rights for you, and raise a grievance about
+          how it is handled. Export and deletion are instant in Settings; for anything else, write to the grievance
+          officer.
+        </p>
+        <GrievanceOfficer />
+        <p>
+          If you are not satisfied with the response, you can complain to the Data Protection Board of India.
+        </p>
       </Section>
 
       <Section title="Age">

@@ -37,3 +37,15 @@ export function ContactLine() {
     </p>
   ) : null;
 }
+
+export function GrievanceOfficer() {
+  const { name, email } = LEGAL.grievanceOfficer;
+  return (
+    <p data-testid="grievance-officer">
+      <strong className="text-foreground">Grievance officer:</strong> {name ? `${name}, ` : ''}
+      <a className="text-primary underline-offset-4 hover:underline" href={`mailto:${email}`}>
+        {email}
+      </a>
+    </p>
+  );
+}
