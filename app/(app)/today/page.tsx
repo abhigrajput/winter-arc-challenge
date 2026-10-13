@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/profile';
 import { createClient } from '@/lib/supabase/server';
 import { loadToday } from '@/lib/tasks/ensure';
 import { loadDisciplineStats } from '@/lib/tasks/stats';
-import { challengeDay, phaseForDay, shiftDate } from '@/lib/calc/day';
+import { challengeDay, localDate, phaseForDay, shiftDate } from '@/lib/calc/day';
 import { recoveryScore } from '@/lib/calc/recovery';
 import { DayHeader } from '@/components/today/day-header';
 import { FullDayCelebration } from '@/components/today/full-day';
@@ -27,38 +27,46 @@ export default async function TodayPage() {
   const { profile } = await requireUser();
   if (!profile) return null;
 
-  const { logDate, tasks, logs } = await loadToday(profile);
-  const stats = await loadDisciplineStats(profile.id, logDate);
-
+  // Stats need today's log rows, so they wait for loadToday; everything else
+  // only needs the date and runs alongside that chain.
+  const now = new Date();
+  const logDate = localDate(profile.timezone ?? '', now);
   const supabase = await createClient();
   const yesterday = shiftDate(logDate, -1);
 
-  const [{ data: templates }, { data: sleep }, { data: lastSession }, { data: gita }, { data: posts }] =
-    await Promise.all([
-      supabase.from('task_templates').select('id, slug'),
-      supabase
-        .from('sleep_logs')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('log_date', logDate)
-        .maybeSingle(),
-      supabase
-        .from('workout_sessions')
-        .select('session_rpe, soreness')
-        .eq('user_id', profile.id)
-        .eq('session_date', yesterday)
-        .not('finished_at', 'is', null)
-        .order('finished_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase.from('gita_progress').select('chapter').eq('user_id', profile.id),
-      supabase
-        .from('content_posts')
-        .select('*')
-        .eq('user_id', profile.id)
-        .gte('log_date', shiftDate(logDate, -7))
-        .order('log_date', { ascending: false }),
-    ]);
+  const todayAndStats = loadToday(profile, now).then(async (today) => ({
+    ...today,
+    stats: await loadDisciplineStats(profile.id, today.logDate),
+  }));
+
+  const extras = Promise.all([
+    supabase.from('task_templates').select('id, slug'),
+    supabase
+      .from('sleep_logs')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('log_date', logDate)
+      .maybeSingle(),
+    supabase
+      .from('workout_sessions')
+      .select('session_rpe, soreness')
+      .eq('user_id', profile.id)
+      .eq('session_date', yesterday)
+      .not('finished_at', 'is', null)
+      .order('finished_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('gita_progress').select('chapter').eq('user_id', profile.id),
+    supabase
+      .from('content_posts')
+      .select('*')
+      .eq('user_id', profile.id)
+      .gte('log_date', shiftDate(logDate, -7))
+      .order('log_date', { ascending: false }),
+  ]);
+
+  const [{ tasks, logs, stats }, extraResults] = await Promise.all([todayAndStats, extras]);
+  const [{ data: templates }, { data: sleep }, { data: lastSession }, { data: gita }, { data: posts }] = extraResults;
 
   const slugById = new Map((templates ?? []).map((t) => [t.id, t.slug]));
   const logByTask = new Map(logs.map((log) => [log.user_task_id, log]));

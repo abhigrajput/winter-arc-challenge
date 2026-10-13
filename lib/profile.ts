@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { ProfileRow } from '@/lib/supabase/types';
@@ -15,8 +16,11 @@ export interface SessionProfile {
  *
  * profile is null only in the window between signup and the handle_new_user
  * trigger landing the stub row.
+ *
+ * Memoised per request: the (app) layout and the page both call it, and each
+ * call is two round trips (auth + profile).
  */
-export async function requireUser(): Promise<SessionProfile> {
+export const requireUser = cache(async function requireUser(): Promise<SessionProfile> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,4 +35,4 @@ export async function requireUser(): Promise<SessionProfile> {
     .maybeSingle();
 
   return { userId: user.id, email: user.email ?? null, profile: profile ?? null };
-}
+});
