@@ -211,10 +211,15 @@ async function auditPublicProfiles(victimUsername: string, privateUsername: stri
   record('public_profiles', 'private users are not listed', (hidden ?? []).length === 0, `${(hidden ?? []).length} rows`);
 }
 
+/** Legacy JWT keys go in both headers; new sb_secret_ keys only in apikey. */
+function restHeaders(key: string): Record<string, string> {
+  return key.startsWith('sb_') ? { apikey: key } : { apikey: key, Authorization: `Bearer ${key}` };
+}
+
 /** Every relation PostgREST exposes must be covered above, or the audit fails. */
 async function auditCoverage(covered: Set<string>) {
   const res = await fetch(`${URL}/rest/v1/`, {
-    headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+    headers: restHeaders(process.env.SUPABASE_SERVICE_ROLE_KEY!),
   });
   const spec = (await res.json()) as { definitions?: Record<string, unknown> };
   const live = Object.keys(spec.definitions ?? {});

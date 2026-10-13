@@ -35,6 +35,7 @@ npm run dev
 | `CRON_SECRET` | server only | Bearer secret for `/api/cron/reminders`; same value as Vault `winter_arc_cron_secret` |
 | `SIGNUP_IP_SALT` | server only | Optional. HMAC key for hashed signup IPs; falls back to the service-role key |
 | `NEXT_PUBLIC_SITE_URL` | server | Optional. Canonical origin for Open Graph URLs; falls back to Vercel's production domain |
+| `FORGOT_PASSWORD_ENABLED` | server only | Optional. `true` turns on the forgot-password flow (needs SMTP, below). Off: the link is hidden and `/auth/forgot`, `/auth/reset` 404 |
 
 Nothing server-only is prefixed `NEXT_PUBLIC_`; `server-only` imports keep the rest out of
 client bundles.
@@ -52,6 +53,8 @@ client bundles.
 | `E2E_BASE_URL=https://... npm run test:e2e` | Same suite against a deployed URL |
 | `npx tsx scripts/rls-audit.mts` | RLS + storage audit against the live project (see Security) |
 | `npm run seed:exercises` | Upsert the 85-exercise library |
+| `scripts/region-migration/*.mts` | Storage copy + old/new comparison for `docs/region-migration.md` |
+| `scripts/debug/*.mts` | One-off diagnostics: auth against the live project, live AI routes (real spend) |
 
 Build, lint and unit tests must pass before a commit. e2e and the audit create throwaway
 `e2e-*@example.com` users and delete them (and their photos) when they finish, pass or fail.
@@ -103,6 +106,29 @@ edit only. `/api/cron/reminders` rejects any call without `Authorization: Bearer
 
 Google sign-in additionally needs the provider enabled in Supabase Auth, with the Supabase callback
 URL registered in Google Cloud OAuth.
+
+### Forgot password
+
+Behind `FORGOT_PASSWORD_ENABLED=true`. `/auth/forgot` sends the reset email and answers the
+same way whether or not the account exists. The link opens `/auth/callback`, which signs the user
+in with a recovery session, then `/auth/reset` sets the new password and signs out every other
+device. `/auth/reset` only accepts a session whose `amr` claim shows a recovery sign-in from the
+last 15 minutes (`lib/auth/recovery.ts`), so an ordinary signed-in session can't use it to skip
+the current-password check in Settings.
+
+Before switching it on in production:
+
+1. Supabase → Authentication → Emails → **SMTP**: configure a provider. The built-in sender only
+   delivers to the project's team members.
+2. Same page → **Reset password** template: make the link
+   `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset`.
+   The default `{{ .ConfirmationURL }}` link also works, but only in the browser that requested it
+   (PKCE). A phone's mail app often opens a different one.
+3. Set `FORGOT_PASSWORD_ENABLED=true` in Vercel and redeploy.
+
+`e2e/password-reset.spec.ts` covers it with the email mocked by `admin.generateLink` (no mail is
+sent). The local e2e server always runs with the flag on. Against a target with it off, only the
+"pages 404, link hidden" test runs.
 
 ## Calc engine
 
@@ -410,6 +436,9 @@ page load.
 - **Signup abuse** — 30 signups per IP per hour, counted in `signup_attempts` by HMAC'd IP.
 
 ## Deploy
+
+Moving the database region: see [`docs/region-migration.md`](docs/region-migration.md).
+
 
 1. Push to GitHub. Vercel → import the repo (framework: Next.js) → add every variable from the
    table above for Production → deploy. Pushes to `main` redeploy.
