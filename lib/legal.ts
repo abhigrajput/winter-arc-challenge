@@ -8,5 +8,5 @@ export const LEGAL = {
    * Grievance officer under India's Digital Personal Data Protection Act, 2023.
    * The name is optional: when null, the page lists the role and address only.
    */
-  grievanceOfficer: { name: null as string | null, email: 'abhigrajput05@gmail.com' },
+  grievanceOfficer: { name: 'Abhishek Rajput' as string | null, email: 'abhigrajput05@gmail.com' },
 } as const;
