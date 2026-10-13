@@ -11,7 +11,10 @@ import { PhotoPanel, type ClientPhoto } from '@/components/body/photo-panel';
 import { MeasurementForm } from '@/components/body/measurement-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export const metadata: Metadata = { title: 'Body' };
+export const metadata: Metadata = {
+  title: 'Body',
+  description: 'Weight trend, weekly measurements, body-fat estimate and private progress photos.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function BodyPage() {

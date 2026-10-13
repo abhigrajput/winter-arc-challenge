@@ -8,15 +8,36 @@ Cold, short, zero fluff. Dark theme only. Mobile-first. Installable PWA.
 ## Stack
 
 Next.js 16 (App Router) · TypeScript strict · Tailwind + shadcn/ui · Supabase (Auth, Postgres,
-RLS, private Storage) · Claude API · zod · Vitest · Vercel.
+RLS, private Storage, pg_cron + pg_net) · DeepSeek API (server-only) · zod · Vitest · Playwright ·
+Web Push · Vercel.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in the values
+cp .env.example .env.local   # fill in the values below
 npm run dev
 ```
+
+### Environment variables
+
+| Variable | Where | What |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | client + server | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | Anon key. Every user read/write goes through it, under RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | server only | Bypasses RLS. Cron, badge grants, signup counter, account deletion, e2e + audit scripts |
+| `DEEPSEEK_API_KEY` | server only | AI coach. Unset = every AI route serves the template fallback |
+| `DEEPSEEK_MODEL` | server only | Reasoning model for `/api/ai/plan` and `/api/ai/checkin` (`deepseek-v4-pro`) |
+| `DEEPSEEK_MODEL_FAST` | server only | Fast model for `/api/ai/meal-estimate` (`deepseek-v4-flash`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | client + server | Web Push public key |
+| `VAPID_PRIVATE_KEY` | server only | Web Push private key (`npx web-push generate-vapid-keys`) |
+| `VAPID_SUBJECT` | server only | Optional. `mailto:` or https contact for push services; defaults to the site URL |
+| `CRON_SECRET` | server only | Bearer secret for `/api/cron/reminders`; same value as Vault `winter_arc_cron_secret` |
+| `SIGNUP_IP_SALT` | server only | Optional. HMAC key for hashed signup IPs; falls back to the service-role key |
+| `NEXT_PUBLIC_SITE_URL` | server | Optional. Canonical origin for Open Graph URLs; falls back to Vercel's production domain |
+
+Nothing server-only is prefixed `NEXT_PUBLIC_`; `server-only` imports keep the rest out of
+client bundles.
 
 ## Scripts
 
@@ -26,18 +47,50 @@ npm run dev
 | `npm run build` | Production build |
 | `npm run lint` | ESLint (flat config) |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest |
+| `npm test` | Vitest (all `lib/calc/*`, guardrails, CSP, account helpers, ...) |
+| `npm run test:e2e` | Playwright against `next start` on :3217 (run `npm run build` first) |
+| `E2E_BASE_URL=https://... npm run test:e2e` | Same suite against a deployed URL |
+| `npx tsx scripts/rls-audit.mts` | RLS + storage audit against the live project (see Security) |
+| `npm run seed:exercises` | Upsert the 85-exercise library |
 
-All four must pass before a commit.
+Build, lint and unit tests must pass before a commit. e2e and the audit create throwaway
+`e2e-*@example.com` users and delete them (and their photos) when they finish, pass or fail.
 
 ## Database
 
-`supabase/schema.sql` documents the live Supabase schema. The project in `.env.local` is already
-provisioned: 20 tables with RLS enforced, `task_templates` seeded with the 24 default tasks, and a
-private `progress` storage bucket.
+`supabase/schema.sql` documents the full live schema (23 tables + the `public_profiles` view,
+RLS enforced on every table, `task_templates` seeded with the 24 default tasks, private `progress`
+storage bucket). `lib/supabase/types.ts` mirrors it; when a table changes, update both.
 
-`lib/supabase/types.ts` mirrors that schema. It was generated from the live PostgREST spec and then
-hand-annotated with the string unions the app relies on. When a table changes, update both files.
+### Migrations order
+
+Run each file once in the Supabase SQL editor, in this order. Every file is idempotent.
+
+1. `supabase/schema.sql` — base tables, RLS policies, seed templates, storage bucket + policy.
+2. `supabase/migrations/pre-phase-13.sql` — own-row-only profiles + `public_profiles` view,
+   body-fat trigger, `daily_logs` delete policy, §4 log-date window trigger, `onboarding_step`.
+3. `supabase/migrations/phase-13.sql` — `skipped_baseline`, private-aware `get_streak`,
+   `get_public_profile`.
+4. `supabase/migrations/phase-14.sql` — `reminder_settings`, `reminder_log`, push tables, and
+   the pg_cron job that calls the reminder route (**add the Vault secrets first**, below).
+5. `supabase/migrations/phase-15.sql` — `signup_attempts` (30 signups/IP/hour) + its daily prune job.
+
+Then `npm run seed:exercises`.
+
+### Cron + Vault
+
+Reminders need a 15-minute cadence; Vercel Hobby crons run at most daily, so the scheduler is
+Supabase **pg_cron**, calling the app with **pg_net**. Before step 4 above, add two secrets in
+Supabase → Project Settings → Vault:
+
+| Vault secret | Value |
+| --- | --- |
+| `winter_arc_site_url` | The production origin, e.g. `https://winter-arc-challenge-blue.vercel.app` |
+| `winter_arc_cron_secret` | Exactly the `CRON_SECRET` set in Vercel |
+
+The job reads them from `vault.decrypted_secrets` at run time, so rotating either is a Vault
+edit only. `/api/cron/reminders` rejects any call without `Authorization: Bearer <CRON_SECRET>`.
+`vercel.json` deliberately declares no crons.
 
 ## Auth
 
@@ -178,10 +231,18 @@ consume the user's quota.
 
 ### Provider configuration
 
-CLAUDE.md §1 specifies the Claude API. `lib/ai/provider.ts` resolves whichever credentials are
-actually present — `ANTHROPIC_API_KEY` first, else `DEEPSEEK_API_KEY` — so the rest of the code
-is provider-agnostic. With neither configured (or with a key the provider rejects) every route
-still works and returns the template plan.
+CLAUDE.md §1 specifies the Claude API; production runs on **DeepSeek** (`lib/ai/client.ts`):
+`DEEPSEEK_MODEL` for plans and check-ins, `DEEPSEEK_MODEL_FAST` for meal estimates. Without a
+key (or with one the provider rejects) every route still works and returns the template plan.
+
+What the model receives: profile metrics (sex, age, height, weight, goal, training setup, diet,
+targets), summaries of recent logs, and the text typed for that request. Never sent: photos,
+username, display name, email. The privacy policy states exactly this; keep them in sync.
+
+Rate limits (`lib/ai/usage.ts`) are checked **before** the model call and recorded after a
+successful one: 3 plans per type per week, 1 check-in per week, 30 meal estimates per day.
+`e2e/ai-limits.spec.ts` pins them: signed-out calls get 401, an exhausted quota gets 429 on all
+five route/type combinations, and refusals are not charged.
 
 ## Nutrition
 
@@ -313,6 +374,56 @@ able to award themselves one. `lib/stats/load.ts` grants them with the service-r
 always scoped to the authenticated user id, and evaluation is idempotent so it can run on every
 page load.
 
+## Account, privacy and legal
+
+- `/privacy` and `/terms` are public, linked from the signup form, the landing footer, the
+  leaderboard, public profiles, the 404 page and Settings. Shared facts live in `lib/legal.ts`;
+  set `contactEmail` there to publish a contact address.
+- Settings → **Public profile** on/off, **Change password** (current password re-checked with a
+  throwaway client), **Export my data** (`GET /api/account/export`: every user table read through
+  the user's own session, push-subscription keys redacted, photo paths listed), **Delete account**
+  (type `DELETE`; removes every object under `{user_id}/` in the `progress` bucket, then the auth
+  user, which cascades to every table).
+- `lib/account/tables.ts` is the single list of user tables shared by export and delete.
+
+## Errors, metadata and share images
+
+- `app/not-found.tsx` (branded 404), `app/error.tsx` (route errors, `retry()`),
+  `app/global-error.tsx` (root layout failures; brings its own `<html>`).
+- Every page sets a title + description. `metadataBase` comes from `lib/site.ts`.
+- Generated Open Graph images: `app/opengraph-image.tsx` (default), `app/leaderboard/opengraph-image.tsx`
+  (live top 3, 5 min), `app/u/[username]/opengraph-image.tsx` (day, streak, badges; generic card for
+  private/unknown users, so it never confirms an account exists).
+
+## Security
+
+- **RLS audit** — `npx tsx scripts/rls-audit.mts` creates a victim (one row in every user table +
+  a photo) and an attacker, then probes every table as anon and as the attacker: read, insert as
+  victim, update, delete. It also checks server-written tables (`achievements`, `reminder_log`,
+  `ai_usage` quota resets), reference tables, `signup_attempts`, the `public_profiles` column
+  list, the private bucket (download, sign, list, upload, delete), and fails if PostgREST exposes
+  any relation the audit does not cover. Last run: **195/195 checks**.
+- **Headers** (`next.config.ts`) — `X-Frame-Options: DENY`, `nosniff`, strict referrer,
+  `Permissions-Policy`, COOP, no `X-Powered-By`, and a **report-only** CSP built in
+  `lib/security/csp.ts`. Violations go to `/api/csp-report` and appear in the Vercel runtime
+  logs as `[csp] ...`. Once those stay quiet, rename the header to `Content-Security-Policy`.
+- **Signup abuse** — 30 signups per IP per hour, counted in `signup_attempts` by HMAC'd IP.
+
+## Deploy
+
+1. Push to GitHub. Vercel → import the repo (framework: Next.js) → add every variable from the
+   table above for Production → deploy. Pushes to `main` redeploy.
+2. Supabase → Authentication → URL configuration: Site URL = the Vercel domain; add
+   `https://<domain>/auth/callback` to the redirect allow-list.
+3. Google sign-in: enable the provider in Supabase and register the Supabase callback URL in
+   Google Cloud OAuth.
+4. Add the two Vault secrets, then run the migrations in order (above).
+5. VAPID keys: `npx web-push generate-vapid-keys` → `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`.
+6. Smoke test: `E2E_BASE_URL=https://<domain> npm run test:e2e`, then
+   `npx tsx scripts/rls-audit.mts`. Both clean up after themselves.
+
+<!-- LIGHTHOUSE -->
+
 ## Phases
 
 Build one phase at a time from `CLAUDE.md` §13. Phases 1 (scaffold + auth), 2 (onboarding + calc
@@ -320,4 +431,5 @@ engine), 3 (today checklist + streaks + points) 4 (task management + goal preset
 5 (exercise library + workout logger), 6 (AI plans),
 7 (nutrition), 8 (body tracking + photos), 9 (face modules),
 10 (sleep, recovery and mind timers), 11 (weekly check-in + auto-adjust)
-and 12 (stats + achievements) are done.
+12 (stats + achievements), 13 (leaderboard + public profiles), 14 (PWA, push reminders, cron) and
+15 (polish + launch readiness) are done.

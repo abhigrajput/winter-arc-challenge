@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
+import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
@@ -9,6 +10,9 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', displ
 export const metadata: Metadata = {
   title: { default: 'Winter Arc', template: '%s · Winter Arc' },
   description: '90 days. Body, mind, discipline. Tracked.',
+  metadataBase: new URL(SITE_URL),
+  openGraph: { siteName: 'Winter Arc', type: 'website', locale: 'en_IN' },
+  twitter: { card: 'summary_large_image' },
   applicationName: 'Winter Arc',
   icons: {
     icon: [

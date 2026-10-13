@@ -7,7 +7,10 @@ import { availableEquipment } from '@/lib/workout/splits';
 import { SessionLogger } from '@/components/train/session-logger';
 import type { LoggerExercise } from '@/components/train/exercise-logger';
 
-export const metadata: Metadata = { title: 'Logging' };
+export const metadata: Metadata = {
+  title: 'Logging',
+  description: 'Log sets, reps, load and RPE with a rest timer.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function SessionPage({

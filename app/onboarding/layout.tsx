@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'Setup' };
+export const metadata: Metadata = {
+  title: 'Setup',
+  description: 'Set up your 90 days: body, goal, training, diet and baseline.',
+};
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   return (

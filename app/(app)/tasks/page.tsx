@@ -12,7 +12,10 @@ import {
 } from '@/components/tasks/task-manager';
 import { applyGoalPreset } from './actions';
 
-export const metadata: Metadata = { title: 'Tasks' };
+export const metadata: Metadata = {
+  title: 'Tasks',
+  description: 'Edit targets, toggle modules, disable or add tasks.',
+};
 export const dynamic = 'force-dynamic';
 
 const MODULE_COPY: Record<string, { label: string; description: string }> = {

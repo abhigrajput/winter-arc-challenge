@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -226,6 +227,18 @@ function SignUpForm() {
         {pending ? <Loader2 className="animate-spin" /> : null}
         Create account
       </Button>
+
+      <p className="text-xs text-muted-foreground">
+        By creating an account you agree to the{' '}
+        <Link href="/terms" className="text-foreground underline underline-offset-4">
+          terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/privacy" className="text-foreground underline underline-offset-4">
+          privacy policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }

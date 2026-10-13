@@ -38,7 +38,8 @@ export async function loadDisciplineStats(
     .from('workout_sessions')
     .select('id')
     .eq('user_id', userId)
-    .not('completed_at', 'is', null);
+    // Finished sessions only (§4: +15 points each). The column is finished_at.
+    .not('finished_at', 'is', null);
   const checkinsQuery = supabase.from('checkins').select('id').eq('user_id', userId);
 
   const [logsResult, activeTasksResult, workoutsResult, checkinsResult] = await Promise.all([

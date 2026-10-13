@@ -6,7 +6,10 @@ import { loadStats } from '@/lib/stats/load';
 import { ACHIEVEMENTS, sortForDisplay } from '@/lib/achievements';
 import { cn } from '@/lib/utils';
 
-export const metadata: Metadata = { title: 'Achievements' };
+export const metadata: Metadata = {
+  title: 'Achievements',
+  description: 'Badges for streaks, PRs, Gita chapters, posts and the 90-day finish.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function AchievementsPage() {

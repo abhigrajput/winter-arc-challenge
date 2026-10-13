@@ -9,7 +9,10 @@ import { repRange } from '@/lib/workout/splits';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export const metadata: Metadata = { title: 'Session summary' };
+export const metadata: Metadata = {
+  title: 'Session summary',
+  description: 'Volume, PRs and duration for the session.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function SummaryPage({

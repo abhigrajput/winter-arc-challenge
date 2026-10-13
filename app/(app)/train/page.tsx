@@ -8,7 +8,10 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { startSession } from './actions';
 
-export const metadata: Metadata = { title: 'Train' };
+export const metadata: Metadata = {
+  title: 'Train',
+  description: 'Today’s session from your plan, history and personal records.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function TrainPage() {

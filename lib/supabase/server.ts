@@ -28,6 +28,17 @@ export async function createClient() {
   });
 }
 
+/**
+ * Cookie-less anon client: reads only what anyone may read (public RPCs and
+ * views), and keeps the caller cacheable. Used by the landing page and share
+ * images, which must never depend on who is viewing.
+ */
+export function createAnonClient() {
+  return createServerClient<Database>(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
+    cookies: { getAll: () => [], setAll: () => {} },
+  });
+}
+
 /** Service-role client. Cron jobs only. Bypasses RLS. */
 export function createServiceClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

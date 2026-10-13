@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { publicEnv } from '@/lib/env';
 import type { Database } from '@/lib/supabase/types';
 import { Hero } from '@/components/landing/hero';
+import { SiteFooter } from '@/components/legal/site-footer';
 import { DaysSection, FinalCta, HowItWorks, ModuleCards, StatsStrip, type TopUser } from '@/components/landing/sections';
 
 export const metadata: Metadata = {
@@ -62,9 +63,7 @@ export default async function LandingPage() {
         <Suspense fallback={null}>
           <FinalCta />
         </Suspense>
-        <footer className="border-t border-border px-4 py-8 text-center text-xs text-muted-foreground">
-          General guidance, not medical advice.
-        </footer>
+        <SiteFooter className="border-t border-border px-4 py-8" />
       </main>
     </>
   );

@@ -1,16 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { safeNext } from '@/lib/safe-redirect';
+import { SiteFooter } from '@/components/legal/site-footer';
 import { LoginForm, type AuthTab } from './login-form';
 
-export const metadata: Metadata = { title: 'Sign in' };
+export const metadata: Metadata = {
+  title: 'Sign in',
+  description: 'Sign in or create an account to start your 90 days.',
+};
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; tab?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; tab?: string; deleted?: string }>;
 }) {
-  const { next, error, tab } = await searchParams;
+  const { next, error, tab, deleted } = await searchParams;
   const initialTab: AuthTab = tab === 'signup' ? 'signup' : 'signin';
 
   return (
@@ -23,9 +27,15 @@ export default async function LoginPage({
         <p className="text-sm text-muted-foreground">90 days. No backfilling. No excuses.</p>
       </div>
 
+      {deleted ? (
+        <p role="status" className="rounded-md border border-border bg-card p-3 text-sm text-muted-foreground">
+          Account deleted. Your data and photos are gone.
+        </p>
+      ) : null}
+
       <LoginForm next={safeNext(next)} initialTab={initialTab} initialError={error} />
 
-      <p className="text-xs text-muted-foreground">General guidance, not medical advice.</p>
+      <SiteFooter />
     </main>
   );
 }

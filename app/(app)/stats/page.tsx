@@ -13,7 +13,10 @@ import { WeightChart } from '@/components/body/weight-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
 
-export const metadata: Metadata = { title: 'Stats' };
+export const metadata: Metadata = {
+  title: 'Stats',
+  description: 'Completion heatmap, trends and the Abs ETA.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function StatsPage() {

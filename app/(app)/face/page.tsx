@@ -22,7 +22,10 @@ import { JawlineDrills } from '@/components/face/jawline-panel';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export const metadata: Metadata = { title: 'Face' };
+export const metadata: Metadata = {
+  title: 'Face',
+  description: 'Skin routine, breakout log and jawline tracking.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function FacePage() {

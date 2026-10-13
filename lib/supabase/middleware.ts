@@ -4,7 +4,20 @@ import { publicEnv } from '@/lib/env';
 
 /** Routes reachable without a session. */
 // /api/cron authenticates itself with CRON_SECRET; it never has a user session.
-const PUBLIC_PREFIXES = ['/login', '/auth', '/u/', '/leaderboard', '/manifest.webmanifest', '/robots.txt', '/api/cron/'];
+// /opengraph-image is the root share card: crawlers never have a session.
+const PUBLIC_PREFIXES = [
+  '/login',
+  '/auth',
+  '/u/',
+  '/leaderboard',
+  '/privacy',
+  '/terms',
+  '/opengraph-image',
+  '/manifest.webmanifest',
+  '/robots.txt',
+  '/api/cron/',
+  '/api/csp-report',
+];
 
 function isPublic(pathname: string): boolean {
   if (pathname === '/') return true;

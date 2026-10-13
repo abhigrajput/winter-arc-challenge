@@ -7,7 +7,10 @@ import { checkRateLimit, planLimit } from '@/lib/ai/usage';
 import { PLAN_TYPES, type PlanType } from '@/lib/ai/schemas';
 import { PlanBoard, type StoredPlan } from '@/components/plan/plan-board';
 
-export const metadata: Metadata = { title: 'Plan' };
+export const metadata: Metadata = {
+  title: 'Plan',
+  description: 'AI workout, diet and skincare plans for the week. General guidance, not medical advice.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function PlanPage() {

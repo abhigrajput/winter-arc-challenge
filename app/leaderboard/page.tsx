@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Flame, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
+import { SiteFooter } from '@/components/legal/site-footer';
 import {
   LEADERBOARD_LIMIT,
   LEADERBOARD_RANGES,
@@ -141,6 +142,8 @@ export default async function LeaderboardPage({
           </Link>
         </p>
       ) : null}
+
+      <SiteFooter className="pt-4" />
     </main>
   );
 }

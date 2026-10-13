@@ -6,9 +6,14 @@ import { parseReminderSettings } from '@/lib/reminders/settings';
 import { Button } from '@/components/ui/button';
 import { PushPanel } from '@/components/settings/push-panel';
 import { ReminderForm } from '@/components/settings/reminder-form';
+import { ChangePasswordForm, DeleteAccount, ExportData, PublicProfileToggle } from '@/components/settings/account-panel';
+import { SiteFooter } from '@/components/legal/site-footer';
 import { signOut } from '@/app/(auth)/login/actions';
 
-export const metadata: Metadata = { title: 'Settings' };
+export const metadata: Metadata = {
+  title: 'Settings',
+  description: 'Reminders, notifications, password, data export and account deletion.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
@@ -52,13 +57,18 @@ export default async function SettingsPage() {
         <h2 id="account-heading" className="label-xs">
           Account
         </h2>
+        <PublicProfileToggle isPublic={profile.is_public !== false} username={profile.username} />
+        <ChangePasswordForm />
+        <ExportData />
         <form action={signOut}>
           <Button type="submit" variant="outline" className="w-full">
             <LogOut />
             Sign out
           </Button>
         </form>
+        <DeleteAccount />
       </section>
+      <SiteFooter className="pb-4" />
     </div>
   );
 }

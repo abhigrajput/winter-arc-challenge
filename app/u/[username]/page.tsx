@@ -7,6 +7,7 @@ import { CHALLENGE_DAYS, challengeDayOn, phaseForDay } from '@/lib/calc/day';
 import { heatmapWeeks } from '@/lib/stats/heatmap';
 import { sortForDisplay } from '@/lib/achievements';
 import { CompletionHeatmap } from '@/components/stats/heatmap';
+import { SiteFooter } from '@/components/legal/site-footer';
 
 /**
  * Public profile (§8.12): day count, streak, achievements, completion heatmap.
@@ -123,6 +124,8 @@ export default async function PublicProfilePage({ params }: { params: Params }) 
         <Trophy className="size-3.5" aria-hidden />
         Discipline only. Body data and photos are never public.
       </p>
+
+      <SiteFooter />
     </main>
   );
 }

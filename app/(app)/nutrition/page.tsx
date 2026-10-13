@@ -8,7 +8,10 @@ import { dietPlanSchema } from '@/lib/ai/schemas';
 import { NutritionRings } from '@/components/nutrition/rings';
 import { LogFood, type LoggedEntry, type PlanMeal } from '@/components/nutrition/log-food';
 
-export const metadata: Metadata = { title: 'Nutrition' };
+export const metadata: Metadata = {
+  title: 'Nutrition',
+  description: 'Calories, protein and water rings, meal ticks, quick add and AI estimates.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function NutritionPage() {

@@ -15,7 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { buttonVariants } from '@/components/ui/button';
 import { InstallPrompt } from '@/components/pwa/install-prompt';
 
-export const metadata: Metadata = { title: 'Today' };
+export const metadata: Metadata = {
+  title: 'Today',
+  description: 'Day X of 90: the checklist, streak and recovery score.',
+};
 
 // Always render fresh: "today" depends on the wall clock, not on a cache.
 export const dynamic = 'force-dynamic';

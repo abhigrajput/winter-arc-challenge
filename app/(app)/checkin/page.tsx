@@ -5,7 +5,10 @@ import { challengeDay, phaseForDay } from '@/lib/calc/day';
 import { POINTS } from '@/lib/calc/points';
 import { CheckinForm } from '@/components/checkin/checkin-form';
 
-export const metadata: Metadata = { title: 'Check-in' };
+export const metadata: Metadata = {
+  title: 'Check-in',
+  description: 'Weekly AI check-in: verdict, three changes and a bounded calorie adjustment.',
+};
 export const dynamic = 'force-dynamic';
 
 export default async function CheckinPage() {
