@@ -422,7 +422,29 @@ page load.
 6. Smoke test: `E2E_BASE_URL=https://<domain> npm run test:e2e`, then
    `npx tsx scripts/rls-audit.mts`. Both clean up after themselves.
 
-<!-- LIGHTHOUSE -->
+## Performance
+
+Lighthouse 12.8 mobile (simulated Moto G Power, slow 4G), against production on 2026-10-13, three
+runs per page; the median is shown, all three runs in brackets. `/today` was measured signed in,
+with the day in progress.
+
+| Page | Performance | Accessibility | Best practices | SEO | LCP | TBT | CLS |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `/login` | **99** (99/96/100) | 99 | 96 | 100 | 2.0 s | 40 ms | 0.000 |
+| `/today` | **92** (91/93/92) | 100 | 100 | 63 | 3.2 s | 47 ms | 0.000 |
+| `/leaderboard` | **98** (98/98/98) | 100 | 100 | 100 | 2.3 s | 67 ms | 0.000 |
+| `/u/[username]` | **99** (99/98/99) | 95 | 100 | 100 | 2.3 s | 48 ms | 0.000 |
+
+`/today` SEO is 63 by design: `robots.txt` disallows the signed-in app, which Lighthouse flags as
+"not crawlable". What moved `/today` from 77 to 92:
+
+- The install card renders last; mounting after hydration at the top shifted the page (CLS 0.16 → 0).
+- Functions run in `syd1` (`vercel.json`), next to the database in AWS ap-southeast-2. They
+  defaulted to `iad1`, so every query crossed the Pacific.
+- `requireUser` is memoised per request (layout + page shared it), and the page's independent
+  queries overlap the `loadToday` → stats chain.
+
+The full-day celebration overlay, shown once when a day hits 100%, is heavier (about 85).
 
 ## Phases
 
