@@ -23,10 +23,13 @@ export function LoginForm({
   next,
   initialTab,
   initialError,
+  passwordReset = false,
 }: {
   next: string;
   initialTab: AuthTab;
   initialError?: string;
+  /** FORGOT_PASSWORD_ENABLED, read on the server. */
+  passwordReset?: boolean;
 }) {
   const [tab, setTab] = useState<AuthTab>(initialTab);
 
@@ -54,7 +57,7 @@ export function LoginForm({
 
       {/* Keyed so switching tabs starts each form clean. */}
       {tab === 'signin' ? (
-        <SignInForm key="signin" next={next} initialError={initialError} />
+        <SignInForm key="signin" next={next} initialError={initialError} passwordReset={passwordReset} />
       ) : (
         <SignUpForm key="signup" />
       )}
@@ -87,7 +90,15 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-function SignInForm({ next, initialError }: { next: string; initialError?: string }) {
+function SignInForm({
+  next,
+  initialError,
+  passwordReset,
+}: {
+  next: string;
+  initialError?: string;
+  passwordReset: boolean;
+}) {
   const [state, action, pending] = useActionState<AuthActionState, FormData>(signIn, { error: initialError });
   const errors = state.fieldErrors ?? {};
 
@@ -115,10 +126,10 @@ function SignInForm({ next, initialError }: { next: string; initialError?: strin
       <div className="space-y-2">
         <div className="flex items-baseline justify-between">
           <Label htmlFor="signin-password">Password</Label>
-          {AUTH_FEATURES.passwordReset ? (
-            <a href="/auth/reset" className="text-xs text-muted-foreground hover:text-foreground">
+          {passwordReset ? (
+            <Link href="/auth/forgot" className="text-xs text-muted-foreground hover:text-foreground">
               Forgot password?
-            </a>
+            </Link>
           ) : null}
         </div>
         <PasswordInput id="signin-password" name="password" autoComplete="current-password" required />

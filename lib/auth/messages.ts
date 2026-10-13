@@ -35,6 +35,17 @@ export const signUpSchema = z
   })
   .refine((v) => v.password === v.confirm, { path: ['confirm'], message: AUTH_ERRORS.passwordMismatch });
 
+export const resetRequestSchema = z.object({
+  email: z.string().trim().toLowerCase().email(AUTH_ERRORS.invalidEmail),
+});
+
+export const newPasswordSchema = z
+  .object({
+    password: z.string().min(MIN_PASSWORD, AUTH_ERRORS.passwordTooShort).max(72, 'Password too long'),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: AUTH_ERRORS.passwordMismatch });
+
 /** Supabase AuthError code → our message. */
 export function mapAuthError(code: string | undefined, fallback: 'signIn' | 'signUp'): string {
   switch (code) {

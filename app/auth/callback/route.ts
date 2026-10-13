@@ -63,8 +63,9 @@ export async function GET(request: NextRequest) {
 
   // Behind a proxy, origin is the internal host — prefer the forwarded one.
   const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') === 'http' ? 'http' : 'https';
   const base = process.env.NODE_ENV === 'production' && forwardedHost
-    ? `https://${forwardedHost}`
+    ? `${forwardedProto}://${forwardedHost}`
     : origin;
 
   return NextResponse.redirect(`${base}${next}`);

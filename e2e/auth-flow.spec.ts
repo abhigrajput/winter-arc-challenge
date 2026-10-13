@@ -116,7 +116,7 @@ test('not-yet-onboarded users signing in go to onboarding', async ({ page }) => 
   await page.waitForURL(/\/onboarding/);
 });
 
-test('plain-text errors and the password eye toggle', async ({ page }) => {
+test('plain-text errors and the password eye toggle', async ({ page, request }) => {
   const existing = newUser('dupe');
   created.push(existing);
   await admin.auth.admin.createUser({ email: existing.email, password: existing.password, email_confirm: true });
@@ -150,8 +150,9 @@ test('plain-text errors and the password eye toggle', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText('Wrong email or password')).toBeVisible();
 
-  // No reset link until SMTP exists, and no Google button while it is disabled.
-  await expect(page.getByText('Forgot password?')).toHaveCount(0);
+  // The reset link follows FORGOT_PASSWORD_ENABLED; no Google button while it is disabled.
+  const resetOn = (await request.get('/auth/forgot')).status() === 200;
+  await expect(page.getByText('Forgot password?')).toHaveCount(resetOn ? 1 : 0);
   await expect(page.getByText('Continue with Google')).toHaveCount(0);
 });
 

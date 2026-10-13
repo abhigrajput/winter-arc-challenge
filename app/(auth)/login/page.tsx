@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { safeNext } from '@/lib/safe-redirect';
 import { SiteFooter } from '@/components/legal/site-footer';
+import { passwordResetEnabled } from '@/lib/auth/recovery';
 import { LoginForm, type AuthTab } from './login-form';
 
 export const metadata: Metadata = {
@@ -33,7 +34,12 @@ export default async function LoginPage({
         </p>
       ) : null}
 
-      <LoginForm next={safeNext(next)} initialTab={initialTab} initialError={error} />
+      <LoginForm
+        next={safeNext(next)}
+        initialTab={initialTab}
+        initialError={error}
+        passwordReset={passwordResetEnabled()}
+      />
 
       <SiteFooter />
     </main>

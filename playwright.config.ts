@@ -34,6 +34,8 @@ export default defineConfig({
   webServer: local
     ? {
         command: 'npx next start -p 3217',
+        // The forgot-password flow is behind a flag; the local server always runs it.
+        env: { FORGOT_PASSWORD_ENABLED: 'true' },
         url: 'http://localhost:3217/login',
         // Never adopt an unrelated app that happens to hold the port.
         reuseExistingServer: false,
