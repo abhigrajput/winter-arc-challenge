@@ -116,8 +116,6 @@ export default async function TodayPage() {
         recovery={recovery.score}
       />
 
-      <InstallPrompt />
-
       <SleepCard today={sleepToday} recovery={recovery} />
 
       {items.length > 0 ? (
@@ -145,6 +143,9 @@ export default async function TodayPage() {
       {activeSlugs.has('content') ? (
         <ContentTracker posts={contentPosts} thisWeek={contentPosts.length} />
       ) : null}
+
+      {/* Last: it mounts after hydration, so anywhere higher it shifts the page (CLS). */}
+      <InstallPrompt />
 
       <FullDayCelebration full={stats.today.full} logDate={logDate} />
     </div>

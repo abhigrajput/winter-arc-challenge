@@ -41,9 +41,15 @@ export async function createTestUser(admin: SupabaseClient, tag: string): Promis
   return { id: data.user.id, email, password };
 }
 
-/** Deleting the auth user cascades to profiles, user_tasks and body_measurements. */
+/**
+ * Deleting the auth user cascades to every table. Storage does not cascade,
+ * so the user's photo folder is emptied first: a test that fails midway must
+ * not leave files behind.
+ */
 export async function deleteTestUser(admin: SupabaseClient, user: TestUser | undefined): Promise<void> {
   if (!user) return;
+  const { data: files } = await admin.storage.from('progress').list(user.id, { limit: 1000 });
+  if (files?.length) await admin.storage.from('progress').remove(files.map((f) => `${user.id}/${f.name}`));
   await admin.auth.admin.deleteUser(user.id);
 }
 
